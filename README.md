@@ -9,6 +9,8 @@
 - [x] Create a System Tray Icon
 - [x] Create a notification system
 - [x] Create a break widget
+- [ ] Migrate to PyQt6
+- [ ] Create a config to set autostart Pause and Work
 - [ ] Generate executable file using pyinstaller
 - [ ] Create a settings database
 - [ ] Create script to build and install the application

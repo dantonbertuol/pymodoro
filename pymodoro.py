@@ -9,25 +9,30 @@ from PyQt5.QtWidgets import (
     QSpinBox,
     QFormLayout,
     QSystemTrayIcon,
-    QStyle,
     QCheckBox,
     QMenuBar,
     QAction,
     QMainWindow,
-    QWIDGETSIZE_MAX,
     QDesktopWidget,
     QMenu,
+    QWIDGETSIZE_MAX,
 )
 from PyQt5.QtCore import QTimer, Qt, QSize
 from PyQt5.QtGui import QIcon
 from PyQt5.QtMultimedia import QSound
+
+ICON_PATH = "pomodor_icon.png"
+SETTINGS_STRING = "Configurações"
 
 
 class BreakWidget(QWidget):
     def __init__(self, on_close, on_skip, on_postpone, timer_label):
         super().__init__()
         self.setWindowFlags(Qt.FramelessWindowHint)  # Remove a barra do título
-        self.setGeometry(0, 0, 800, 600)
+        screen_geometry = QDesktopWidget().availableGeometry()
+        width = int(screen_geometry.width() * 0.4)
+        height = int(screen_geometry.height() * 0.4)
+        self.setGeometry(0, 0, width, height)
 
         self.on_close = on_close
         self.on_skip = on_skip
@@ -75,7 +80,7 @@ class BreakWidget(QWidget):
             }
         """
         )
-
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.center()
 
     def center(self):
@@ -99,9 +104,9 @@ class BreakWidget(QWidget):
 class ConfigWidget(QWidget):
     def __init__(self, on_save, on_quit):
         super().__init__()
-        self.setWindowTitle("Configurações")
+        self.setWindowTitle(SETTINGS_STRING)
         self.setGeometry(100, 100, 200, 250)
-        self.setWindowIcon(QIcon("pomodor_icon.png"))  # Define o ícone da janela
+        self.setWindowIcon(QIcon(ICON_PATH))  # Define o ícone da janela
         # self.setWindowFlags(Qt.FramelessWindowHint)  # Remove a barra do título
 
         # Estilo do tema escuro
@@ -224,7 +229,7 @@ class PomodoroTimer(QMainWindow):
         """
         )
 
-        self.setWindowIcon(QIcon("pomodor_icon.png"))  # Define o ícone da janela
+        self.setWindowIcon(QIcon(ICON_PATH))  # Define o ícone da janela
 
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
@@ -246,6 +251,17 @@ class PomodoroTimer(QMainWindow):
             """
         )
 
+        # Settings variables (default values)
+        self.cycle_count = 4
+        self.work_duration = 25 * 60
+        self.short_break = 5 * 60
+        self.long_break = 20 * 60
+        self.fullscreen = False
+        self.always_on_top = True
+        self.end_of_cycle = False
+
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.always_on_top)
+
         timer_layout = QVBoxLayout()
         timer_layout.addWidget(self.timer_label)
         self.timer_container.setLayout(timer_layout)
@@ -258,7 +274,7 @@ class PomodoroTimer(QMainWindow):
         self.start_button.clicked.connect(self.toggle_timer)
 
         self.next_cycle_button = QPushButton("Next Step", self)
-        self.next_cycle_button.clicked.connect(self.next_cycle)
+        self.next_cycle_button.clicked.connect(lambda: self.next_cycle(autostart=True))
 
         self.reset_button = QPushButton("Reset", self)
         self.reset_button.clicked.connect(self.reset_timer)
@@ -281,7 +297,6 @@ class PomodoroTimer(QMainWindow):
         self.timer.timeout.connect(self.update_timer)
 
         self.config_widget = ConfigWidget(self.save_config, self.quit_config)
-        self.work_duration = self.config_widget.work_duration_spinbox.value() * 60  # Convertendo para segundos
         self.total_seconds = self.work_duration
         self.running = False
         self.cycle = 1
@@ -294,7 +309,7 @@ class PomodoroTimer(QMainWindow):
 
         # Sistema de bandeja
         self.tray_icon = QSystemTrayIcon(self)
-        self.tray_icon.setIcon(QIcon("pomodor_icon.png"))
+        self.tray_icon.setIcon(QIcon(ICON_PATH))
         self.tray_icon.setVisible(True)
 
         # Som de notificação
@@ -305,7 +320,7 @@ class PomodoroTimer(QMainWindow):
         self.menu_bar.setNativeMenuBar(False)
         self.setMenuBar(self.menu_bar)
 
-        config_action = QAction("Configurações", self)
+        config_action = QAction(SETTINGS_STRING, self)
         self.minimalist_action = QAction("Small", self)
         exit_action = QAction("Sair", self)
         config_action.triggered.connect(self.show_config_widget)
@@ -379,11 +394,12 @@ class PomodoroTimer(QMainWindow):
             self.timer_label.setText(f"{minutes:02}:{seconds:02}")
             if not self.is_work_cycle:
                 self.timer_label_break.setText(f"{minutes:02}:{seconds:02}")
+                if self.total_seconds == 0:
+                    self.break_widget.close()
             self.update_tray_tooltip()
         if self.total_seconds == 0:
             self.timer.stop()
-            self.running = False
-            self.next_cycle()
+            self.next_cycle(autostart=True)
 
     def update_tray_tooltip(self):
         minutes, seconds = divmod(self.total_seconds, 60)
@@ -392,39 +408,59 @@ class PomodoroTimer(QMainWindow):
         else:
             self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} - Descanso")
 
-    def next_cycle(self):
-        short_break_duration = self.config_widget.short_break_spinbox.value() * 60  # em segundos
-        long_break_duration = self.config_widget.long_break_spinbox.value() * 60  # em segundos
-        cycles_to_complete = self.config_widget.cycle_count_spinbox.value()
+    # TODO: reduzir complexidade do método
+    def next_cycle(self, autostart: bool = True):
+        short_break_duration = self.short_break  # em segundos
+        long_break_duration = self.long_break  # em segundos
+        cycles_to_complete = self.cycle_count
 
         if self.is_work_cycle:
             if self.cycle % cycles_to_complete == 0:  # Cada X ciclos de trabalho
                 self.total_seconds = long_break_duration
                 self.cycle_label.setText(f"Ciclo: {self.cycle} - Descanso Longo")
-                if self.config_widget.fullscreen_checkbox.isChecked():
+                if self.fullscreen:
                     self.show_break_widget_fullscreen()
                 else:
                     self.show_break_widget()
                 self.show_notification("Descanso Longo")
+                self.end_of_cycle = True
             else:
                 self.total_seconds = short_break_duration
                 self.cycle_label.setText(f"Ciclo: {self.cycle} - Descanso Curto")
-                if self.config_widget.fullscreen_checkbox.isChecked():
+                if self.fullscreen:
                     self.show_break_widget_fullscreen()
                 else:
                     self.show_break_widget()
                 self.show_notification("Descanso Curto")
         else:
             # Avançar para o próximo ciclo de trabalho
-            self.cycle += 1
-            self.total_seconds = self.config_widget.work_duration_spinbox.value() * 60
+            if self.end_of_cycle:
+                self.cycle = 1
+                # self.timer.stop()
+                self.start_button.setText("Start")
+                self.end_of_cycle = False
+                self.running = False
+                self.show_notification("Fim do Ciclo")
+            else:
+                self.cycle += 1
+                # self.timer.start(1000)
+                self.show_notification("Trabalho")
+            self.total_seconds = self.work_duration
             self.cycle_label.setText(f"Ciclo: {self.cycle} - Trabalho")
-            self.show_notification("Trabalho")
 
         self.is_work_cycle = not self.is_work_cycle
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.timer_label_break.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+
+        if autostart:
+            self.running = True
+        else:
+            self.running = False
+
         if self.running:
             self.timer.start(1000)
+        else:
+            self.timer.stop()
 
     def tray_icon_actions(self):
         # Adiciona ações ao ícone da bandeja
@@ -432,7 +468,7 @@ class PomodoroTimer(QMainWindow):
         next_step_action.triggered.connect(self.next_cycle)
         reset_action = QAction("Reset", self)
         reset_action.triggered.connect(self.reset_timer)
-        settings_action = QAction("Configurações", self)
+        settings_action = QAction(SETTINGS_STRING, self)
         settings_action.triggered.connect(self.show_config_widget)
         small_mode_action = QAction("Small", self)
         small_mode_action.triggered.connect(self.show_minimalist_mode)
@@ -447,7 +483,7 @@ class PomodoroTimer(QMainWindow):
         self.tray_icon.setContextMenu(self.menu)
 
     def show_notification(self, message):
-        self.tray_icon.showMessage("Pomodoro Timer", message, QIcon("pomodor_icon.png"), 3000)
+        self.tray_icon.showMessage("Pomodoro Timer", message, QIcon(ICON_PATH), 3000)
         self.notification_sound.play()  # Toca o som ao mostrar a notificação
 
     def show_break_widget(self):
@@ -462,21 +498,12 @@ class PomodoroTimer(QMainWindow):
     def skip_break(self):
         # Avança para o próximo ciclo de trabalho, se estivermos em um ciclo de descanso
         if not self.is_work_cycle:
-            self.cycle += 1  # Incrementa o ciclo
-            self.total_seconds = (
-                self.config_widget.work_duration_spinbox.value() * 60
-            )  # Reinicia o timer para o tempo de trabalho
-            self.cycle_label.setText(f"Ciclo: {self.cycle} - Trabalho")
-            self.show_notification("Trabalho")
-            self.is_work_cycle = True  # Define que agora é um ciclo de trabalho
-            if self.running:
-                self.timer.start(1000)
+            self.next_cycle(autostart=True)
 
     def postpone_break(self):
         # Adia o descanso, adicionando 5 minutos de trabalho ao timer
         self.total_seconds = 300  # Adiciona 5 minutos (300 segundos)
         self.cycle_label.setText(f"Ciclo: {self.cycle} - Trabalho")
-        # self.show_notification("Descanso Adiado")
         self.is_work_cycle = True  # Define que agora é um ciclo de trabalho
         if self.running:
             self.timer.start(1000)
@@ -486,7 +513,7 @@ class PomodoroTimer(QMainWindow):
         self.running = False
         self.cycle = 1
         self.is_work_cycle = True
-        self.total_seconds = self.config_widget.work_duration_spinbox.value() * 60
+        self.total_seconds = self.work_duration
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.cycle_label.setText("Ciclo: 1 - Trabalho")
         self.start_button.setText("Start")
@@ -495,16 +522,18 @@ class PomodoroTimer(QMainWindow):
         self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         self.config_widget.move(self.pos())
         self.config_widget.show()
+        self.hide()
 
     def show_minimalist_mode(self):
         if not self.minimalist:
             self.old_size = self.size()
             self.cycle_label.setStyleSheet("font-size: 12px;")
             self.timer_label.setStyleSheet("font-size: 24px;")
-            self.setFixedSize(200, 150)
+            self.setFixedSize(210, 150)
             self.minimalist = True
             self.minimalist_action.setText("Normal")
-            self.setWindowFlags(Qt.FramelessWindowHint)  # Remove a barra do título
+            self.setWindowFlag(Qt.WindowStaysOnTopHint, self.always_on_top)
+            self.setWindowFlags(Qt.FramelessWindowHint)
             self.show()
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
@@ -519,23 +548,24 @@ class PomodoroTimer(QMainWindow):
                 | Qt.WindowMaximizeButtonHint
                 | Qt.WindowCloseButtonHint
             )  # Restaura a barra do título e os botões de controle
+            self.setWindowFlag(Qt.WindowStaysOnTopHint, self.always_on_top)
             self.show()
 
     def save_config(self, cycle_count, work_duration, short_break, long_break, fullscreen, always_on_top):
-        self.config_widget.cycle_count_spinbox.setValue(cycle_count)
-        self.config_widget.work_duration_spinbox.setValue(work_duration)
-        self.config_widget.short_break_spinbox.setValue(short_break)
-        self.config_widget.long_break_spinbox.setValue(long_break)
-        self.config_widget.fullscreen_checkbox.setChecked(fullscreen)
-        self.config_widget.always_on_top_checkbox.setChecked(always_on_top)
+        self.cycle_count = cycle_count
         self.work_duration = work_duration * 60
+        self.short_break = short_break * 60
+        self.long_break = long_break * 60
+        self.fullscreen = fullscreen
+        self.always_on_top = always_on_top
         self.total_seconds = self.work_duration
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, always_on_top)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.always_on_top)
+        self.move(self.config_widget.pos())
         self.show()
 
     def quit_config(self):
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.config_widget.always_on_top_checkbox.isChecked())
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, self.always_on_top)
         self.show()
 
 
