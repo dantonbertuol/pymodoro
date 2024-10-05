@@ -533,14 +533,10 @@ class PomodoroTimer(QMainWindow):
     def show_minimalist_mode(self):
         if not self.minimalist:
             self.old_size = self.size()
-            self.cycle_label.setStyleSheet("font-size: 12px;")
-            self.timer_label.setStyleSheet("font-size: 24px;")
             self.setFixedSize(210, 170)
             self.minimalist = True
             self.minimalist_action.setText("⏫")
             self.small_mode_action.setText("⏫Normal Mode")
-            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
-            self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
             self.show()
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
@@ -548,14 +544,6 @@ class PomodoroTimer(QMainWindow):
             self.resize(self.old_size)
             self.minimalist = False
             self.minimalist_action.setText("⏬")
-            self.setWindowFlags(
-                Qt.WindowType.WindowTitleHint
-                | Qt.WindowType.WindowSystemMenuHint
-                | Qt.WindowType.WindowMinimizeButtonHint
-                | Qt.WindowType.WindowMaximizeButtonHint
-                | Qt.WindowType.WindowCloseButtonHint
-            )  # Restaura a barra do título e os botões de controle
-            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
             self.show()
 
     def save_config(
