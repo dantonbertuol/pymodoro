@@ -206,7 +206,7 @@ class PomodoroTimer(QMainWindow):
         self.timer_container.setStyleSheet(
             """
             QWidget {
-                background-color: #3C3C3C;
+                background-color: #232323;
                 border-radius: 15px;
             }
             """
