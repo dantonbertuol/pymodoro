@@ -20,3 +20,4 @@
 - [ ] Set a task to work on
 - [ ] Generate a report of the time worked
 - [ ] Dismember files
+- [ ] Detect idle time

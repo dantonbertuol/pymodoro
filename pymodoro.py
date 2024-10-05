@@ -360,11 +360,13 @@ class PomodoroTimer(QMainWindow):
         self.running = True
         self.timer.start(1000)
         self.start_button.setText("Pause")
+        self.start_action.setText("Pause")
 
     def pause_timer(self):
         self.running = False
         self.timer.stop()
         self.start_button.setText("Resume")
+        self.start_action.setText("Resume")
 
     def update_timer(self):
         if self.total_seconds > 0:
@@ -419,6 +421,7 @@ class PomodoroTimer(QMainWindow):
                 self.cycle = 1
                 # self.timer.stop()
                 self.start_button.setText("Start")
+                self.start_action.setText("Start")
                 self.end_of_cycle = False
                 self.running = False
                 self.show_notification("End of Cycle")
@@ -442,15 +445,17 @@ class PomodoroTimer(QMainWindow):
 
         if self.running:
             self.start_button.setText("Pause")
+            self.start_action.setText("Pause")
             self.timer.start(1000)
         else:
             self.start_button.setText("Start")
+            self.start_action.setText("Start")
             self.timer.stop()
 
     def tray_icon_actions(self):
         # Adiciona ações ao ícone da bandeja
-        start_action = QAction("Start", self)
-        start_action.triggered.connect(self.start_timer)
+        self.start_action = QAction("Start", self)
+        self.start_action.triggered.connect(self.toggle_timer)
         next_step_action = QAction("Next", self)
         next_step_action.triggered.connect(self.next_cycle)
         reset_action = QAction("Reset", self)
@@ -461,7 +466,7 @@ class PomodoroTimer(QMainWindow):
         self.small_mode_action.triggered.connect(self.show_minimalist_mode)
         quit_action = QAction("❌ Exit", self)
         quit_action.triggered.connect(self.close_app)
-        self.menu.addAction(start_action)
+        self.menu.addAction(self.start_action)
         self.menu.addAction(next_step_action)
         self.menu.addAction(reset_action)
         self.menu.addAction(settings_action)
@@ -485,8 +490,10 @@ class PomodoroTimer(QMainWindow):
 
         if self.running:
             self.start_button.setText("Pause")
+            self.start_action.setText("Pause")
         else:
             self.start_button.setText("Resume")
+            self.start_action.setText("Resume")
 
     def show_notification(self, message):
         self.tray_icon.showMessage("Pomodoro Timer", message, QIcon(ICON_PATH), 3000)
@@ -523,6 +530,7 @@ class PomodoroTimer(QMainWindow):
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.cycle_label.setText("Cycle: 1 - Work")
         self.start_button.setText("Start")
+        self.start_action.setText("Start")
 
     def show_config_widget(self):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
