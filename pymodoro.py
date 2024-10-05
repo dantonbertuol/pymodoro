@@ -1,7 +1,6 @@
 import sys
 import os
 import platform
-from pwd import getpwnam  # type: ignore
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -29,6 +28,7 @@ if "vscode" in os.environ.get("TERM_PROGRAM", ""):
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
 else:
     if platform.system() == "Linux":
+        from pwd import getpwnam  # type: ignore
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
         ICON_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_icon.png"
         DARKMODE_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_darkmode.qss"
