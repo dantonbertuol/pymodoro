@@ -23,7 +23,7 @@ from PyQt6.QtMultimedia import QSoundEffect
 
 # Se estivermos no ambiente de desenvolvimento do VSCode
 if "vscode" in os.environ.get("TERM_PROGRAM", ""):
-    ICON_PATH = "utils/pymodoro_icon.png"
+    ICON_PATH = "utils/pymodoro_icon.ico"
     DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
 else:
@@ -31,13 +31,15 @@ else:
         from pwd import getpwnam  # type: ignore
 
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
-        ICON_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_icon.png"
+        ICON_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_icon.ico"
         DARKMODE_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_darkmode.qss"
         NOTIFICATION_SOUND_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/notification.wav"
     elif platform.system() == "Windows":
-        ICON_PATH = "utils/pymodoro_icon.png"
-        DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
-        NOTIFICATION_SOUND_PATH = "utils/notification.wav"
+        ICON_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/pymodoro_icon.ico"
+        DARKMODE_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/pymodoro_darkmode.qss"
+        NOTIFICATION_SOUND_PATH = (
+            f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/notification.wav"
+        )
     else:
         raise NotImplementedError("Sistema operacional não suportado")
 
@@ -385,9 +387,9 @@ class PomodoroTimer(QMainWindow):
     def update_tray_tooltip(self):
         minutes, seconds = divmod(self.total_seconds, 60)
         if self.is_work_cycle:
-            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} - Work")
+            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} -  Cycle {self.cycle} - Work")
         elif not self.is_work_cycle:
-            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} - Break")
+            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} -  Cycle {self.cycle} - Break")
         else:
             self.tray_icon.setToolTip("Pomodoro Timer")
 
