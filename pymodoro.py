@@ -89,15 +89,15 @@ class BreakWidget(QWidget):
 
     def close_widget(self):
         self.on_close()
-        self.close()
+        self.hide()
 
     def skip_break(self):
         self.on_skip()
-        self.close()
+        self.hide()
 
     def postpone_break(self):
         self.on_postpone()
-        self.close()
+        self.hide()
 
 
 class ConfigWidget(QWidget):
@@ -170,11 +170,11 @@ class ConfigWidget(QWidget):
             self.autostart_work_checkbox.isChecked(),
             self.autostart_break_checkbox.isChecked(),
         )
-        self.close()
+        self.hide()
 
     def closeEvent(self, event):
         self.on_quit()
-        self.close()
+        self.hide()
 
 
 class PomodoroTimer(QMainWindow):
@@ -308,6 +308,10 @@ class PomodoroTimer(QMainWindow):
 
         self.adjustSize()  # Ajusta o tamanho da janela ao menor possível
 
+    def close_app(self):
+        self.show()
+        self.close()
+
     def dark_mode(self):
         file = QFile(DARKMODE_PATH)
         file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text)  # type: ignore
@@ -369,7 +373,7 @@ class PomodoroTimer(QMainWindow):
             if not self.is_work_cycle:
                 self.timer_label_break.setText(f"{minutes:02}:{seconds:02}")
                 if self.total_seconds == 0:
-                    self.break_widget.close()
+                    self.break_widget.hide()
             self.update_tray_tooltip()
         if self.total_seconds == 0:
             self.timer.stop()
@@ -455,7 +459,7 @@ class PomodoroTimer(QMainWindow):
         self.small_mode_action = QAction("⏬ Small Mode", self)
         self.small_mode_action.triggered.connect(self.show_minimalist_mode)
         quit_action = QAction("❌ Exit", self)
-        quit_action.triggered.connect(self.close)
+        quit_action.triggered.connect(self.close_app)
         self.menu.addAction(start_action)
         self.menu.addAction(next_step_action)
         self.menu.addAction(reset_action)
