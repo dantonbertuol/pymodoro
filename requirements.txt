@@ -1,4 +1,4 @@
-pyqt5==5.15.9
+pyqt6==6.7.1
 flake8==6.0.0
 mypy==1.2.0
 autopep8==2.0.2
