@@ -29,6 +29,7 @@ if "vscode" in os.environ.get("TERM_PROGRAM", ""):
 else:
     if platform.system() == "Linux":
         from pwd import getpwnam  # type: ignore
+
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
         ICON_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_icon.png"
         DARKMODE_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_darkmode.qss"
@@ -473,6 +474,19 @@ class PomodoroTimer(QMainWindow):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.setVisible(True)
             self.activateWindow()
+            self.update_widget_infos()
+
+    def update_widget_infos(self):
+        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        if self.is_work_cycle:
+            self.cycle_label.setText(f"Cycle: {self.cycle} - Work")
+        else:
+            self.cycle_label.setText(f"Cycle: {self.cycle} - Break")
+
+        if self.running:
+            self.start_button.setText("Pause")
+        else:
+            self.start_button.setText("Resume")
 
     def show_notification(self, message):
         self.tray_icon.showMessage("Pomodoro Timer", message, QIcon(ICON_PATH), 3000)
