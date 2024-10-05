@@ -11,7 +11,8 @@
 - [x] Create a break widget
 - [x] Migrate to PyQt6
 - [x] Create a config to set autostart Pause and Work
-- [ ] Generate executable file using pyinstaller
+- [x] Generate executable file using pyinstaller for Linux
+- [ ] Generate executable file using pyinstaller for Windows
 - [ ] Create a settings database
 - [ ] Create script to build and install the application
 - [ ] Improve readme

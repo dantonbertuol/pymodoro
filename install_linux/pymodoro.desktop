@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pymodoro
+Icon=pymodoro_icon
+Exec=$HOME/.local/bin/pymodoro
+Terminal=false
+Keywords=Pomodoro;Timer;Productivity;Pymodoro
+StartupNotify=true
