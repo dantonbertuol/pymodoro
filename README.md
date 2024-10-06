@@ -11,11 +11,14 @@
 - [x] Create a break widget
 - [x] Migrate to PyQt6
 - [x] Create a config to set autostart Pause and Work
-- [ ] Generate executable file using pyinstaller
+- [x] Generate executable file using pyinstaller for Linux
+- [x] Generate executable file using pyinstaller for Windows
+- [x] Create script to build and install the application
+- [x] Improve Darkmode
+- [ ] Add Lightmode
 - [ ] Create a settings database
-- [ ] Create script to build and install the application
 - [ ] Improve readme
-- [ ] Improve Darkmode
 - [ ] Set a task to work on
 - [ ] Generate a report of the time worked
 - [ ] Dismember files
+- [ ] Detect idle time
