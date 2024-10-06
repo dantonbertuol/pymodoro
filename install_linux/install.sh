@@ -8,6 +8,7 @@ mkdir -p $PATH_BIN
 mkdir -p $PATH_DESKTOP
 mkdir -p $PATH_ICON
 cp ../utils/pymodoro_darkmode.qss $PATH_UTILS
+cp ../utils/pymodoro_lightmode.qss $PATH_UTILS
 cp ../utils/pymodoro_icon.ico $PATH_UTILS
 cp ../utils/notification.wav $PATH_UTILS
 cp bin/pymodoro $PATH_BIN

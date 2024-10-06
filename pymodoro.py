@@ -25,6 +25,7 @@ from PyQt6.QtMultimedia import QSoundEffect
 if "vscode" in os.environ.get("TERM_PROGRAM", ""):
     ICON_PATH = "utils/pymodoro_icon.ico"
     DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
+    LIGHTMODE_PATH = "utils/pymodoro_lightmode.qss"
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
 else:
     if platform.system() == "Linux":
@@ -33,10 +34,14 @@ else:
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
         ICON_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_icon.ico"
         DARKMODE_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_darkmode.qss"
+        LIGHTMODE_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils/notification.wav"
     elif platform.system() == "Windows":
         ICON_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/pymodoro_icon.ico"
         DARKMODE_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/pymodoro_darkmode.qss"
+        LIGHTMODE_PATH = (
+            f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/pymodoro_lightmode.qss"
+        )
         NOTIFICATION_SOUND_PATH = (
             f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils/notification.wav"
         )
@@ -133,11 +138,13 @@ class ConfigWidget(QWidget):
         self.always_on_top_checkbox = QCheckBox("Always on top", self)
         self.autostart_break_checkbox = QCheckBox("Autostart Break", self)
         self.autostart_work_checkbox = QCheckBox("Autostart Work", self)
+        self.dark_mode_checkbox = QCheckBox("Dark Mode", self)
 
         self.always_on_top_checkbox.setChecked(pomodor.always_on_top)
         self.fullscreen_checkbox.setChecked(pomodor.fullscreen)
         self.autostart_break_checkbox.setChecked(pomodor.autostart_break)
         self.autostart_work_checkbox.setChecked(pomodor.autostart_work)
+        self.dark_mode_checkbox.setChecked(pomodor.dark_mode_config)
         self.cycle_count_spinbox.setValue(pomodor.cycle_count)
         self.work_duration_spinbox.setValue(pomodor.work_duration // 60)
         self.long_break_spinbox.setValue(pomodor.long_break // 60)
@@ -153,6 +160,7 @@ class ConfigWidget(QWidget):
         config_layout.addRow("", self.always_on_top_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.autostart_work_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.autostart_break_checkbox)  # Adiciona o checkbox
+        config_layout.addRow("", self.dark_mode_checkbox)
 
         self.save_button = QPushButton("Save", self)
         self.save_button.clicked.connect(self.save_config)
@@ -172,6 +180,7 @@ class ConfigWidget(QWidget):
             self.always_on_top_checkbox.isChecked(),
             self.autostart_work_checkbox.isChecked(),
             self.autostart_break_checkbox.isChecked(),
+            self.dark_mode_checkbox.isChecked(),
         )
         self.hide()
 
@@ -187,9 +196,6 @@ class PomodoroTimer(QMainWindow):
         self.setWindowTitle("Pymodoro")
         self.setGeometry(100, 100, 250, 200)
 
-        # Estilo do tema escuro
-        self.setStyleSheet(self.dark_mode())
-
         self.setWindowIcon(QIcon(ICON_PATH))  # Define o ícone da janela
 
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
@@ -203,14 +209,6 @@ class PomodoroTimer(QMainWindow):
         self.timer_label_break.setStyleSheet("font-size: 48px;")
 
         self.timer_container = QWidget(self)
-        self.timer_container.setStyleSheet(
-            """
-            QWidget {
-                background-color: #232323;
-                border-radius: 15px;
-            }
-            """
-        )
 
         # Settings variables (default values)
         self.cycle_count = 4
@@ -222,6 +220,12 @@ class PomodoroTimer(QMainWindow):
         self.end_of_cycle = False
         self.autostart_break = True
         self.autostart_work = True
+        self.dark_mode_config = True
+
+        # Estilo do tema escuro
+        self.setStyleSheet(self.dark_mode())
+
+        self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
 
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
 
@@ -287,16 +291,16 @@ class PomodoroTimer(QMainWindow):
         self.minimalist_action = QAction("⏬", self)
         self.minimalist_action.setToolTip("Toggle Minimalist Mode")
         minimize_on_tray = QAction("↘️", self)
-        exit_action = QAction("❌", self)
-        exit_action.setToolTip("Exit")
+        self.darkmode_action = QAction("🌒", self)
+        self.darkmode_action.setToolTip("Toggle Dark Mode")
         config_action.triggered.connect(self.show_config_widget)
         self.minimalist_action.triggered.connect(self.show_minimalist_mode)
         minimize_on_tray.triggered.connect(self.hide)
-        exit_action.triggered.connect(self.close)
+        self.darkmode_action.triggered.connect(self.toggle_dark_mode)
         self.menu_bar.addAction(config_action)
         self.menu_bar.addAction(self.minimalist_action)
         self.menu_bar.addAction(minimize_on_tray)
-        self.menu_bar.addAction(exit_action)
+        self.menu_bar.addAction(self.darkmode_action)
 
         self.minimalist = False
         self.old_size = self.size()
@@ -315,10 +319,39 @@ class PomodoroTimer(QMainWindow):
         self.show()
         self.close()
 
-    def dark_mode(self):
-        file = QFile(DARKMODE_PATH)
-        file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text)  # type: ignore
-        stream = QTextStream(file)
+    def toggle_dark_mode(self):
+        self.dark_mode_config = not self.dark_mode_config
+        self.setStyleSheet(self.dark_mode())
+        self.config_widget.setStyleSheet(self.dark_mode())
+        self.break_widget.setStyleSheet(self.dark_mode())
+        self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
+        self.config_widget.dark_mode_checkbox.setChecked(self.dark_mode_config)
+
+        self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
+
+    def dark_mode(self, timer_container=False):
+        if timer_container:
+            if self.dark_mode_config:
+                return """
+                    QWidget {
+                        background-color: #232323;
+                        border-radius: 15px;
+                    }
+                    """
+            else:
+                return """
+                    QWidget {
+                        background-color: #f0f0f0;
+                        border-radius: 15px;
+                    }
+                    """
+        else:
+            if self.dark_mode_config:
+                file = QFile(DARKMODE_PATH)
+            else:
+                file = QFile(LIGHTMODE_PATH)
+            file.open(QIODevice.OpenModeFlag.ReadOnly | QIODevice.OpenModeFlag.Text)  # type: ignore
+            stream = QTextStream(file)
 
         return stream.readAll()
 
@@ -535,10 +568,8 @@ class PomodoroTimer(QMainWindow):
         self.start_action.setText("Start")
 
     def show_config_widget(self):
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, False)
         self.config_widget.move(self.pos())
         self.config_widget.show()
-        self.hide()
 
     def show_minimalist_mode(self):
         if not self.minimalist:
@@ -566,6 +597,7 @@ class PomodoroTimer(QMainWindow):
         always_on_top,
         autostart_work,
         autostart_break,
+        dark_mode,
     ):
         self.cycle_count = cycle_count
         self.work_duration = work_duration * 60
@@ -576,9 +608,14 @@ class PomodoroTimer(QMainWindow):
         self.autostart_work = autostart_work
         self.autostart_break = autostart_break
         self.total_seconds = self.work_duration
+        self.dark_mode_config = dark_mode
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
-        self.move(self.config_widget.pos())
+        self.setStyleSheet(self.dark_mode())
+        self.config_widget.setStyleSheet(self.dark_mode())
+        self.break_widget.setStyleSheet(self.dark_mode())
+        self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
+        self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
         self.show()
 
     def quit_config(self):
