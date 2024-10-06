@@ -16,9 +16,9 @@
 - [x] Create script to build and install the application
 - [x] Improve Darkmode
 - [x] Add Lightmode
-- [ ] Create a settings database
-- [ ] Improve readme
-- [ ] Set a task to work on
-- [ ] Generate a report of the time worked
+- [x] Create a settings database
 - [ ] Dismember files
+- [ ] Set a task to work on
+- [ ] Improve readme
+- [ ] Generate a report of the time worked
 - [ ] Detect idle time

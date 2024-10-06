@@ -11,6 +11,7 @@ cp ../utils/pymodoro_darkmode.qss $PATH_UTILS
 cp ../utils/pymodoro_lightmode.qss $PATH_UTILS
 cp ../utils/pymodoro_icon.ico $PATH_UTILS
 cp ../utils/notification.wav $PATH_UTILS
+cp ../utils/pymodoro_settings.json $PATH_UTILS
 cp bin/pymodoro $PATH_BIN
 cp pymodoro.desktop $PATH_DESKTOP
 cp ../utils/pymodoro_icon.ico $PATH_ICON
