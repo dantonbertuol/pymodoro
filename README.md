@@ -13,10 +13,11 @@
 - [x] Create a config to set autostart Pause and Work
 - [x] Generate executable file using pyinstaller for Linux
 - [x] Generate executable file using pyinstaller for Windows
+- [x] Create script to build and install the application
+- [x] Improve Darkmode
+- [ ] Add Lightmode
 - [ ] Create a settings database
-- [ ] Create script to build and install the application
 - [ ] Improve readme
-- [ ] Improve Darkmode
 - [ ] Set a task to work on
 - [ ] Generate a report of the time worked
 - [ ] Dismember files

@@ -387,9 +387,9 @@ class PomodoroTimer(QMainWindow):
     def update_tray_tooltip(self):
         minutes, seconds = divmod(self.total_seconds, 60)
         if self.is_work_cycle:
-            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} -  Cycle {self.cycle} - Work")
+            self.tray_icon.setToolTip(f"Cycle {self.cycle} - Work: {minutes:02}:{seconds:02}")
         elif not self.is_work_cycle:
-            self.tray_icon.setToolTip(f"Tempo restante: {minutes:02}:{seconds:02} -  Cycle {self.cycle} - Break")
+            self.tray_icon.setToolTip(f" Cycle {self.cycle} - Break: {minutes:02}:{seconds:02}")
         else:
             self.tray_icon.setToolTip("Pomodoro Timer")
 
