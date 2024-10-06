@@ -291,7 +291,7 @@ class PomodoroTimer(QMainWindow):
         self.minimalist_action = QAction("⏬", self)
         self.minimalist_action.setToolTip("Toggle Minimalist Mode")
         minimize_on_tray = QAction("↘️", self)
-        self.darkmode_action = QAction("🌖", self)
+        self.darkmode_action = QAction("🌒", self)
         self.darkmode_action.setToolTip("Toggle Dark Mode")
         config_action.triggered.connect(self.show_config_widget)
         self.minimalist_action.triggered.connect(self.show_minimalist_mode)
@@ -327,7 +327,7 @@ class PomodoroTimer(QMainWindow):
         self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
         self.config_widget.dark_mode_checkbox.setChecked(self.dark_mode_config)
 
-        self.darkmode_action.setText("🌖" if self.dark_mode_config else "🌒")
+        self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
 
     def dark_mode(self, timer_container=False):
         if timer_container:
@@ -615,7 +615,7 @@ class PomodoroTimer(QMainWindow):
         self.config_widget.setStyleSheet(self.dark_mode())
         self.break_widget.setStyleSheet(self.dark_mode())
         self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
-        self.darkmode_action.setText("🌖" if self.dark_mode_config else "🌒")
+        self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
         self.show()
 
     def quit_config(self):
