@@ -15,10 +15,11 @@ from PyQt6.QtWidgets import (
     QMenuBar,
     QMainWindow,
     QMenu,
+    QToolTip,
     QWIDGETSIZE_MAX,
 )
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
-from PyQt6.QtGui import QIcon, QAction
+from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtMultimedia import QSoundEffect
 
 # Se estivermos no ambiente de desenvolvimento do VSCode
@@ -288,11 +289,16 @@ class PomodoroTimer(QMainWindow):
 
         config_action = QAction("⚙️", self)
         config_action.setToolTip("Settings")
+        config_action.hovered.connect(self.show_tooltip)
         self.minimalist_action = QAction("⏬", self)
         self.minimalist_action.setToolTip("Toggle Minimalist Mode")
+        self.minimalist_action.hovered.connect(self.show_tooltip)
         minimize_on_tray = QAction("↘️", self)
+        minimize_on_tray.setToolTip("Minimize on Tray")
+        minimize_on_tray.hovered.connect(self.show_tooltip)
         self.darkmode_action = QAction("🌒", self)
         self.darkmode_action.setToolTip("Toggle Dark Mode")
+        self.darkmode_action.hovered.connect(self.show_tooltip)
         config_action.triggered.connect(self.show_config_widget)
         self.minimalist_action.triggered.connect(self.show_minimalist_mode)
         minimize_on_tray.triggered.connect(self.hide)
@@ -318,6 +324,11 @@ class PomodoroTimer(QMainWindow):
     def close_app(self):
         self.show()
         self.close()
+
+    def show_tooltip(self):
+        act = self.sender()
+        if isinstance(act, QAction):
+            QToolTip.showText(QCursor.pos(), act.toolTip(), self)
 
     def toggle_dark_mode(self):
         self.dark_mode_config = not self.dark_mode_config
