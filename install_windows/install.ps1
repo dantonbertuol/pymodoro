@@ -12,10 +12,14 @@ New-Item -ItemType Directory -Force -Path $PATH_ICON
 Copy-Item -Path "../utils/pymodoro_darkmode.qss" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/pymodoro_lightmode.qss" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/pymodoro_icon.ico" -Destination $PATH_UTILS
+Copy-Item -Path "../utils/pymodoro_tray_icon.ico" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/notification.wav" -Destination $PATH_UTILS
-Copy-Item -Path "../utils/pymodoro_settings.json" -Destination $PATH_UTILS
 Copy-Item -Path "bin/pymodoro.exe" -Destination $PATH_BIN
 Copy-Item -Path "../utils/pymodoro_icon.ico" -Destination $PATH_ICON
+
+if (-Not (Test-Path "$PATH_UTILS\pymodoro_settings.json")) {
+    Copy-Item -Path "../utils/pymodoro_settings.json" -Destination $PATH_UTILS
+}
 
 # Create a shortcut on the desktop
 $WScriptShell = New-Object -ComObject WScript.Shell

@@ -27,6 +27,7 @@ from PyQt6.QtMultimedia import QSoundEffect
 # Se estivermos no ambiente de desenvolvimento do VSCode
 if "vscode" in os.environ.get("TERM_PROGRAM", ""):
     ICON_PATH = "utils/pymodoro_icon.ico"
+    TRAY_ICON_PATH = "utils/pymodoro_tray_icon.ico"
     DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
     LIGHTMODE_PATH = "utils/pymodoro_lightmode.qss"
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
@@ -38,6 +39,7 @@ else:
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
         UTILS_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils"
         ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
+        TRAY_ICON_PATH = f"{UTILS_PATH}/pymodoro_tray_icon.ico"
         DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
@@ -45,6 +47,7 @@ else:
     elif platform.system() == "Windows":
         UTILS_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils"
         ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
+        TRAY_ICON_PATH = f"{UTILS_PATH}/pymodoro_tray_icon.ico"
         DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
@@ -124,7 +127,6 @@ class ConfigWidget(QWidget):
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, pomodor.always_on_top)
 
         self.on_save = pomodor.save_config
-        self.on_quit = pomodor.quit_config
 
         self.cycle_count_spinbox = QSpinBox(self)
 
@@ -185,7 +187,6 @@ class ConfigWidget(QWidget):
         self.hide()
 
     def closeEvent(self, event):
-        self.on_quit()
         self.hide()
 
 
@@ -254,6 +255,7 @@ class PomodoroTimer(QMainWindow):
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(QIcon(ICON_PATH))
         self.tray_icon.setVisible(True)
+        self.on_tray = False
 
         # Som de notificação
         self.notification_sound = QSoundEffect()
@@ -278,7 +280,7 @@ class PomodoroTimer(QMainWindow):
         self.darkmode_action.hovered.connect(self.show_tooltip)
         config_action.triggered.connect(self.show_config_widget)
         self.minimalist_action.triggered.connect(self.show_minimalist_mode)
-        minimize_on_tray.triggered.connect(self.hide)
+        minimize_on_tray.triggered.connect(self.on_tray_option)
         self.darkmode_action.triggered.connect(self.toggle_dark_mode)
         self.menu_bar.addAction(config_action)
         self.menu_bar.addAction(self.minimalist_action)
@@ -299,6 +301,8 @@ class PomodoroTimer(QMainWindow):
         self.adjustSize()  # Ajusta o tamanho da janela ao menor possível
 
         self.update_settings()
+
+        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
 
     def close_app(self):
         self.show()
@@ -324,15 +328,12 @@ class PomodoroTimer(QMainWindow):
             self.break_quotes = settings["break_quotes"]
 
     def update_settings(self):
-        self.total_seconds = self.work_duration
-        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
         self.setStyleSheet(self.dark_mode())
         self.config_widget.setStyleSheet(self.dark_mode())
         self.break_widget.setStyleSheet(self.dark_mode())
         self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
         self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
-        self.show()
 
     def toggle_dark_mode(self):
         self.dark_mode_config = not self.dark_mode_config
@@ -521,17 +522,11 @@ class PomodoroTimer(QMainWindow):
         next_step_action.triggered.connect(self.next_cycle)
         reset_action = QAction("Reset", self)
         reset_action.triggered.connect(self.reset_timer)
-        settings_action = QAction("⚙️ Settings", self)
-        settings_action.triggered.connect(self.show_config_widget)
-        self.small_mode_action = QAction("⏬ Small Mode", self)
-        self.small_mode_action.triggered.connect(self.show_minimalist_mode)
-        quit_action = QAction("❌ Exit", self)
+        quit_action = QAction("Exit", self)
         quit_action.triggered.connect(self.close_app)
         self.menu.addAction(self.start_action)
         self.menu.addAction(next_step_action)
         self.menu.addAction(reset_action)
-        self.menu.addAction(settings_action)
-        self.menu.addAction(self.small_mode_action)
         self.menu.addAction(quit_action)
         self.tray_icon.activated.connect(self.on_tray_icon_click)
         self.tray_icon.setContextMenu(self.menu)
@@ -541,6 +536,7 @@ class PomodoroTimer(QMainWindow):
             self.setVisible(True)
             self.activateWindow()
             self.update_widget_infos()
+            self.on_tray = False
 
     def update_widget_infos(self):
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
@@ -597,8 +593,13 @@ class PomodoroTimer(QMainWindow):
         self.start_button.setText("Start")
         self.start_action.setText("Start")
 
+    def on_tray_option(self):
+        self.hide()
+        self.on_tray = True
+
     def show_config_widget(self):
-        self.config_widget.move(self.pos())
+        if not self.on_tray:
+            self.config_widget.move(self.pos())
         self.config_widget.show()
 
     def show_minimalist_mode(self):
@@ -607,7 +608,6 @@ class PomodoroTimer(QMainWindow):
             self.setFixedSize(210, 170)
             self.minimalist = True
             self.minimalist_action.setText("⏫")
-            self.small_mode_action.setText("⏫Normal Mode")
             self.show()
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
@@ -646,10 +646,6 @@ class PomodoroTimer(QMainWindow):
 
         self.set_settings()
         self.update_settings()
-
-    def quit_config(self):
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
-        self.show()
 
 
 if __name__ == "__main__":
