@@ -128,6 +128,8 @@ class ConfigWidget(QWidget):
 
         self.on_save = pomodor.save_config
 
+        self.pomodor = pomodor
+
         self.cycle_count_spinbox = QSpinBox(self)
 
         self.work_duration_spinbox = QSpinBox(self)
@@ -136,6 +138,7 @@ class ConfigWidget(QWidget):
 
         self.long_break_spinbox = QSpinBox(self)
 
+        self.show_break_widget_checkbox = QCheckBox("Show Break Widget", self)
         self.fullscreen_checkbox = QCheckBox("Full Screen Break", self)
         self.always_on_top_checkbox = QCheckBox("Always on top", self)
         self.autostart_break_checkbox = QCheckBox("Autostart Break", self)
@@ -143,7 +146,13 @@ class ConfigWidget(QWidget):
         self.dark_mode_checkbox = QCheckBox("Dark Mode", self)
 
         self.always_on_top_checkbox.setChecked(pomodor.always_on_top)
-        self.fullscreen_checkbox.setChecked(pomodor.fullscreen)
+        if not pomodor.show_break_widget_opt:
+            self.fullscreen_checkbox.setChecked(False)
+            self.fullscreen_checkbox.setEnabled(False)
+        else:
+            self.fullscreen_checkbox.setChecked(pomodor.fullscreen)
+            self.fullscreen_checkbox.setEnabled(True)
+        self.show_break_widget_checkbox.setChecked(pomodor.show_break_widget_opt)
         self.autostart_break_checkbox.setChecked(pomodor.autostart_break)
         self.autostart_work_checkbox.setChecked(pomodor.autostart_work)
         self.dark_mode_checkbox.setChecked(pomodor.dark_mode_config)
@@ -151,6 +160,7 @@ class ConfigWidget(QWidget):
         self.work_duration_spinbox.setValue(pomodor.work_duration // 60)
         self.long_break_spinbox.setValue(pomodor.long_break // 60)
         self.short_break_spinbox.setValue(pomodor.short_break // 60)
+        self.show_break_widget_checkbox.stateChanged.connect(self.on_change_show_break_widget)
 
         config_layout = QFormLayout()
         config_layout.addRow("Cycles:", self.cycle_count_spinbox)
@@ -158,6 +168,7 @@ class ConfigWidget(QWidget):
         config_layout.addRow("Short Break (min):", self.short_break_spinbox)
         config_layout.addRow("Long Break (min):", self.long_break_spinbox)
 
+        config_layout.addRow("", self.show_break_widget_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.fullscreen_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.always_on_top_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.autostart_work_checkbox)  # Adiciona o checkbox
@@ -178,6 +189,7 @@ class ConfigWidget(QWidget):
             self.work_duration_spinbox.value(),
             self.short_break_spinbox.value(),
             self.long_break_spinbox.value(),
+            self.show_break_widget_checkbox.isChecked(),
             self.fullscreen_checkbox.isChecked(),
             self.always_on_top_checkbox.isChecked(),
             self.autostart_work_checkbox.isChecked(),
@@ -185,9 +197,17 @@ class ConfigWidget(QWidget):
             self.dark_mode_checkbox.isChecked(),
         )
         self.hide()
+        self.pomodor.show()
 
     def closeEvent(self, event):
         self.hide()
+
+    def on_change_show_break_widget(self):
+        if not self.show_break_widget_checkbox.isChecked():
+            self.fullscreen_checkbox.setChecked(False)
+            self.fullscreen_checkbox.setEnabled(False)
+        else:
+            self.fullscreen_checkbox.setEnabled(True)
 
 
 class PomodoroTimer(QMainWindow):
@@ -298,8 +318,6 @@ class PomodoroTimer(QMainWindow):
         self.tray_icon_actions()
         self.update_tray_tooltip()
 
-        self.adjustSize()  # Ajusta o tamanho da janela ao menor possível
-
         self.update_settings()
 
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
@@ -320,20 +338,23 @@ class PomodoroTimer(QMainWindow):
             self.work_duration = settings["work_duration"] * 60
             self.short_break = settings["short_break"] * 60
             self.long_break = settings["long_break"] * 60
+            self.show_break_widget_opt = settings["show_break_widget"]
             self.fullscreen = settings["fullscreen_break"]
             self.always_on_top = settings["always_on_top"]
             self.autostart_work = settings["autostart_work"]
             self.autostart_break = settings["autostart_break"]
             self.dark_mode_config = settings["dark_mode"]
             self.break_quotes = settings["break_quotes"]
+            self.window_size = (settings["window_size"]["width"], settings["window_size"]["height"])
 
     def update_settings(self):
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
         self.setStyleSheet(self.dark_mode())
         self.config_widget.setStyleSheet(self.dark_mode())
         self.break_widget.setStyleSheet(self.dark_mode())
         self.timer_container.setStyleSheet(self.dark_mode(timer_container=True))
         self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
+        self.resize(self.window_size[0], self.window_size[1])
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
 
     def toggle_dark_mode(self):
         self.dark_mode_config = not self.dark_mode_config
@@ -350,6 +371,7 @@ class PomodoroTimer(QMainWindow):
             self.work_duration // 60,
             self.short_break // 60,
             self.long_break // 60,
+            self.show_break_widget_opt,
             self.fullscreen,
             self.always_on_top,
             self.autostart_work,
@@ -468,7 +490,8 @@ class PomodoroTimer(QMainWindow):
                     self.show_break_widget_fullscreen()
                 else:
                     self.show_break_widget()
-                self.show_notification("Long Break")
+                phrase = self.get_random_quote()
+                self.show_notification(f"Long Break - {phrase}")
                 self.end_of_cycle = True
             else:
                 self.total_seconds = short_break_duration
@@ -477,7 +500,8 @@ class PomodoroTimer(QMainWindow):
                     self.show_break_widget_fullscreen()
                 else:
                     self.show_break_widget()
-                self.show_notification("Short Break")
+                phrase = self.get_random_quote()
+                self.show_notification(f"Short Break - {phrase}")
                 self.end_of_cycle = False
         else:
             # Avançar para o próximo ciclo de trabalho
@@ -498,7 +522,7 @@ class PomodoroTimer(QMainWindow):
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.timer_label_break.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
 
-        if self.is_work_cycle and self.autostart_work:
+        if self.is_work_cycle and self.autostart_work and not self.end_of_cycle:
             self.running = True
         elif not self.is_work_cycle and self.autostart_break:
             self.running = True
@@ -557,14 +581,16 @@ class PomodoroTimer(QMainWindow):
         self.notification_sound.play()  # Toca o som ao mostrar a notificação
 
     def show_break_widget(self):
-        self.break_widget.show()  # Exibe o widget normalmente
-        self.break_widget.label.setText(self.get_random_quote())
+        if self.show_break_widget_opt:
+            self.break_widget.show()  # Exibe o widget normalmente
+            self.break_widget.label.setText(self.get_random_quote())
 
     def get_random_quote(self):
         return self.break_quotes[random.randint(0, len(self.break_quotes) - 1)]
 
     def show_break_widget_fullscreen(self):
-        self.break_widget.showFullScreen()  # Exibe o widget em tela cheia
+        if self.show_break_widget_opt:
+            self.break_widget.showFullScreen()  # Exibe o widget em tela cheia
 
     def close_break_widget(self):
         self.break_widget.hide()
@@ -623,6 +649,7 @@ class PomodoroTimer(QMainWindow):
         work_duration,
         short_break,
         long_break,
+        show_break_widget,
         fullscreen,
         always_on_top,
         autostart_work,
@@ -635,17 +662,33 @@ class PomodoroTimer(QMainWindow):
                 "work_duration": work_duration,
                 "short_break": short_break,
                 "long_break": long_break,
+                "show_break_widget": show_break_widget,
                 "fullscreen_break": fullscreen,
                 "always_on_top": always_on_top,
                 "autostart_work": autostart_work,
                 "autostart_break": autostart_break,
                 "dark_mode": dark_mode,
                 "break_quotes": self.break_quotes,
+                "window_size": {"width": self.width(), "height": self.height()},
             }
             json.dump(settings, file)
 
         self.set_settings()
         self.update_settings()
+
+    def closeEvent(self, event):
+        self.save_config(
+            self.cycle_count,
+            self.work_duration // 60,
+            self.short_break // 60,
+            self.long_break // 60,
+            self.show_break_widget_opt,
+            self.fullscreen,
+            self.always_on_top,
+            self.autostart_work,
+            self.autostart_break,
+            self.dark_mode_config,
+        )
 
 
 if __name__ == "__main__":
