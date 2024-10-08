@@ -1,0 +1,25 @@
+{
+    "cycle_count": 4,
+    "work_duration": 25,
+    "short_break": 5,
+    "long_break": 20,
+    "show_break_widget": true,
+    "fullscreen_break": false,
+    "always_on_top": false,
+    "autostart_work": true,
+    "autostart_break": true,
+    "dark_mode": true,
+    "break_quotes": [
+        "Alongue-se!",
+        "Respire fundo!",
+        "Olhe para longe!",
+        "Beba Agua!",
+        "Feche os olhos!",
+        "Relaxe!",
+        "De uma volta!"
+    ],
+    "window_size": {
+        "width": 204,
+        "height": 165
+    }
+}

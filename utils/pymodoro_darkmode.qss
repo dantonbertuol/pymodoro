@@ -15,3 +15,6 @@ QPushButton {
     padding: 10px;
     border-radius: 5px;
 }
+QCheckBox:disabled {
+    color: #555555;
+}
