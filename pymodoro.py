@@ -73,6 +73,10 @@ class BreakWidget(QWidget):
         self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label.setStyleSheet("font-size: 72px;")
 
+        self.label_cycle = QLabel("Cycle 1 Break", self)
+        self.label_cycle.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label_cycle.setStyleSheet("font-size: 24px;")
+
         close_button = QPushButton("Close", self)
         close_button.clicked.connect(self.close_widget)
 
@@ -89,6 +93,7 @@ class BreakWidget(QWidget):
 
         layout = QVBoxLayout()
         layout.addWidget(self.label)
+        layout.addWidget(self.label_cycle)
         layout.addWidget(pomodor.timer_label_break)
         layout.addLayout(button_layout)
         self.setLayout(layout)
@@ -521,6 +526,7 @@ class PomodoroTimer(QMainWindow):
         self.is_work_cycle = not self.is_work_cycle
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
         self.timer_label_break.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.update_tray_tooltip()
 
         if self.is_work_cycle and self.autostart_work and not self.end_of_cycle:
             self.running = True
@@ -584,6 +590,7 @@ class PomodoroTimer(QMainWindow):
         if self.show_break_widget_opt:
             self.break_widget.show()  # Exibe o widget normalmente
             self.break_widget.label.setText(self.get_random_quote())
+            self.break_widget.label_cycle.setText(f"Cycle {self.cycle} Break")
 
     def get_random_quote(self):
         return self.break_quotes[random.randint(0, len(self.break_quotes) - 1)]
@@ -615,6 +622,7 @@ class PomodoroTimer(QMainWindow):
         self.is_work_cycle = True
         self.total_seconds = self.work_duration
         self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.update_tray_tooltip()
         self.cycle_label.setText("Cycle: 1 - Work")
         self.start_button.setText("Start")
         self.start_action.setText("Start")
