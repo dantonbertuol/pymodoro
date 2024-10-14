@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMenu,
     QToolTip,
+    QLineEdit,
     QWIDGETSIZE_MAX,
 )
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
@@ -149,6 +150,7 @@ class ConfigWidget(QWidget):
         self.autostart_break_checkbox = QCheckBox("Autostart Break", self)
         self.autostart_work_checkbox = QCheckBox("Autostart Work", self)
         self.dark_mode_checkbox = QCheckBox("Dark Mode", self)
+        self.task_to_work_checkbox = QCheckBox("Enable Task to Work", self)
 
         self.always_on_top_checkbox.setChecked(pomodor.always_on_top)
         if not pomodor.show_break_widget_opt:
@@ -166,6 +168,7 @@ class ConfigWidget(QWidget):
         self.long_break_spinbox.setValue(pomodor.long_break // 60)
         self.short_break_spinbox.setValue(pomodor.short_break // 60)
         self.show_break_widget_checkbox.stateChanged.connect(self.on_change_show_break_widget)
+        self.task_to_work_checkbox.setChecked(pomodor.task_to_work)
 
         config_layout = QFormLayout()
         config_layout.addRow("Cycles:", self.cycle_count_spinbox)
@@ -179,6 +182,7 @@ class ConfigWidget(QWidget):
         config_layout.addRow("", self.autostart_work_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.autostart_break_checkbox)  # Adiciona o checkbox
         config_layout.addRow("", self.dark_mode_checkbox)
+        config_layout.addRow("", self.task_to_work_checkbox)
 
         self.save_button = QPushButton("Save", self)
         self.save_button.clicked.connect(self.save_config)
@@ -200,6 +204,7 @@ class ConfigWidget(QWidget):
             self.autostart_work_checkbox.isChecked(),
             self.autostart_break_checkbox.isChecked(),
             self.dark_mode_checkbox.isChecked(),
+            self.task_to_work_checkbox.isChecked(),
         )
         self.hide()
         self.pomodor.show()
@@ -259,9 +264,13 @@ class PomodoroTimer(QMainWindow):
         button_layout.addWidget(self.next_cycle_button)
         button_layout.addWidget(self.reset_button)
 
+        self.task_to_work_input = QLineEdit()
+        self.task_to_work_input.setPlaceholderText("Task to work")
+
         layout = QVBoxLayout()
         layout.addWidget(self.cycle_label)
         layout.addWidget(self.timer_container)
+        layout.addWidget(self.task_to_work_input)
         layout.addLayout(button_layout)
 
         central_widget = QWidget()
@@ -325,7 +334,7 @@ class PomodoroTimer(QMainWindow):
 
         self.update_settings()
 
-        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.set_timer_label()
 
     def close_app(self):
         self.show()
@@ -351,6 +360,7 @@ class PomodoroTimer(QMainWindow):
             self.dark_mode_config = settings["dark_mode"]
             self.break_quotes = settings["break_quotes"]
             self.window_size = (settings["window_size"]["width"], settings["window_size"]["height"])
+            self.task_to_work = settings["task_to_work"]
 
     def update_settings(self):
         self.setStyleSheet(self.dark_mode())
@@ -360,6 +370,10 @@ class PomodoroTimer(QMainWindow):
         self.darkmode_action.setText("🌒" if self.dark_mode_config else "🌖")
         self.resize(self.window_size[0], self.window_size[1])
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
+        if self.task_to_work:
+            self.task_to_work_input.show()
+        else:
+            self.task_to_work_input.hide()
 
     def toggle_dark_mode(self):
         self.dark_mode_config = not self.dark_mode_config
@@ -382,6 +396,7 @@ class PomodoroTimer(QMainWindow):
             self.autostart_work,
             self.autostart_break,
             self.dark_mode_config,
+            self.task_to_work,
         )
 
     def dark_mode(self, timer_container=False):
@@ -458,15 +473,24 @@ class PomodoroTimer(QMainWindow):
         self.start_button.setText("Resume")
         self.start_action.setText("Resume")
 
+    def isnt_autostart(self):
+        self.running = False
+        self.timer.stop()
+        self.start_button.setText("Start")
+        self.start_action.setText("Start")
+
+    def set_timer_label(self):
+        minutes, seconds = divmod(self.total_seconds, 60)
+        self.timer_label.setText(f"{minutes:02}:{seconds:02}")
+        if not self.is_work_cycle:
+            self.timer_label_break.setText(f"{minutes:02}:{seconds:02}")
+
     def update_timer(self):
         if self.total_seconds > 0:
             self.total_seconds -= 1
-            minutes, seconds = divmod(self.total_seconds, 60)
-            self.timer_label.setText(f"{minutes:02}:{seconds:02}")
-            if not self.is_work_cycle:
-                self.timer_label_break.setText(f"{minutes:02}:{seconds:02}")
-                if self.total_seconds == 0:
-                    self.break_widget.hide()
+            self.set_timer_label()
+            if not self.is_work_cycle and self.total_seconds == 0:
+                self.break_widget.hide()
             self.update_tray_tooltip()
         if self.total_seconds == 0:
             self.timer.stop()
@@ -474,75 +498,81 @@ class PomodoroTimer(QMainWindow):
 
     def update_tray_tooltip(self):
         minutes, seconds = divmod(self.total_seconds, 60)
+        task = self.task_to_work_input.text() if self.task_to_work else ""
+        text_to_show = ""
         if self.is_work_cycle:
-            self.tray_icon.setToolTip(f"Cycle {self.cycle} - Work: {minutes:02}:{seconds:02}")
+            text_to_show = f"Cycle {self.cycle} - Work: {minutes:02}:{seconds:02}"
+            text_to_show += f" - Task: {task}" if task else ""
+            self.tray_icon.setToolTip(text_to_show)
         elif not self.is_work_cycle:
-            self.tray_icon.setToolTip(f" Cycle {self.cycle} - Break: {minutes:02}:{seconds:02}")
+            text_to_show = f"Cycle {self.cycle} - Break: {minutes:02}:{seconds:02}"
+            text_to_show += f" - Task: {task}" if task else ""
+            self.tray_icon.setToolTip(text_to_show)
         else:
             self.tray_icon.setToolTip("Pomodoro Timer")
 
-    # TODO: reduzir complexidade do método
-    def next_cycle(self):
-        short_break_duration = self.short_break  # em segundos
-        long_break_duration = self.long_break  # em segundos
-        cycles_to_complete = self.cycle_count
-
-        if self.is_work_cycle:
-            if self.cycle % cycles_to_complete == 0:  # Cada X ciclos de trabalho
-                self.total_seconds = long_break_duration
-                self.cycle_label.setText(f"Cycle: {self.cycle} - Long Break")
-                if self.fullscreen:
-                    self.show_break_widget_fullscreen()
-                else:
-                    self.show_break_widget()
-                phrase = self.get_random_quote()
-                self.show_notification(f"Long Break - {phrase}")
-                self.end_of_cycle = True
+    def break_cycle(self):
+        if self.cycle % self.cycle_count == 0:  # Cada X ciclos de trabalho
+            self.total_seconds = self.long_break
+            self.cycle_label.setText(f"Cycle: {self.cycle} - Long Break")
+            if self.fullscreen:
+                self.show_break_widget_fullscreen()
             else:
-                self.total_seconds = short_break_duration
-                self.cycle_label.setText(f"Cycle: {self.cycle} - Short Break")
-                if self.fullscreen:
-                    self.show_break_widget_fullscreen()
-                else:
-                    self.show_break_widget()
-                phrase = self.get_random_quote()
-                self.show_notification(f"Short Break - {phrase}")
-                self.end_of_cycle = False
+                self.show_break_widget()
+            phrase = self.get_random_quote()
+            self.show_notification(f"Long Break - {phrase}")
+            self.end_of_cycle = True
         else:
-            # Avançar para o próximo ciclo de trabalho
-            if self.end_of_cycle:
-                self.cycle = 1
-                self.start_button.setText("Start")
-                self.start_action.setText("Start")
-                self.end_of_cycle = False
-                self.running = False
-                self.show_notification("End of Cycle")
+            self.total_seconds = self.short_break
+            self.cycle_label.setText(f"Cycle: {self.cycle} - Short Break")
+            if self.fullscreen:
+                self.show_break_widget_fullscreen()
             else:
-                self.cycle += 1
-                self.show_notification("Work")
-            self.total_seconds = self.work_duration
-            self.cycle_label.setText(f"Cycle: {self.cycle} - Work")
+                self.show_break_widget()
+            phrase = self.get_random_quote()
+            self.show_notification(f"Short Break - {phrase}")
+            self.end_of_cycle = False
+        self.is_work_cycle = False
 
-        self.is_work_cycle = not self.is_work_cycle
-        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
-        self.timer_label_break.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+    def work_cycle(self):
+        if self.end_of_cycle:
+            self.cycle = 1
+            self.start_button.setText("Start")
+            self.start_action.setText("Start")
+            self.end_of_cycle = False
+            self.running = False
+            self.show_notification("End of Cycle")
+        else:
+            self.cycle += 1
+            self.show_notification("Work")
+        self.total_seconds = self.work_duration
+        self.cycle_label.setText(f"Cycle: {self.cycle} - Work")
+        self.is_work_cycle = True
+
+    def next_cycle(self):
+        if self.is_work_cycle:
+            self.break_cycle()
+        else:
+            self.work_cycle()
+
+        self.set_timer_label()
         self.update_tray_tooltip()
 
+        self.verify_auto_start()
+
+        # TODO: ajustar logica para nao iniciar quando for end of cycle
+        if self.running:
+            self.start_timer()
+        else:
+            self.isnt_autostart()
+
+    def verify_auto_start(self):
         if self.is_work_cycle and self.autostart_work and not self.end_of_cycle:
             self.running = True
         elif not self.is_work_cycle and self.autostart_break:
             self.running = True
         else:
             self.running = False
-
-        if self.running:
-            self.start_button.setText("Pause")
-            self.start_action.setText("Pause")
-            self.timer.start(1000)
-        else:
-            self.start_button.setText("Start")
-            self.start_action.setText("Start")
-            self.timer.stop()
 
     def tray_icon_actions(self):
         # Adiciona ações ao ícone da bandeja
@@ -569,7 +599,7 @@ class PomodoroTimer(QMainWindow):
             self.on_tray = False
 
     def update_widget_infos(self):
-        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.set_timer_label()
         if self.is_work_cycle:
             self.cycle_label.setText(f"Cycle: {self.cycle} - Work")
         else:
@@ -621,7 +651,7 @@ class PomodoroTimer(QMainWindow):
         self.cycle = 1
         self.is_work_cycle = True
         self.total_seconds = self.work_duration
-        self.timer_label.setText(f"{self.total_seconds // 60:02}:{self.total_seconds % 60:02}")
+        self.set_timer_label()
         self.update_tray_tooltip()
         self.cycle_label.setText("Cycle: 1 - Work")
         self.start_button.setText("Start")
@@ -663,6 +693,7 @@ class PomodoroTimer(QMainWindow):
         autostart_work,
         autostart_break,
         dark_mode,
+        task_to_work,
     ):
         with open(SETTINGS_PATH, "w", encoding="utf-8") as file:
             settings = {
@@ -678,6 +709,7 @@ class PomodoroTimer(QMainWindow):
                 "dark_mode": dark_mode,
                 "break_quotes": self.break_quotes,
                 "window_size": {"width": self.width(), "height": self.height()},
+                "task_to_work": task_to_work,
             }
             json.dump(settings, file)
 
@@ -696,6 +728,7 @@ class PomodoroTimer(QMainWindow):
             self.autostart_work,
             self.autostart_break,
             self.dark_mode_config,
+            self.task_to_work,
         )
 
 
