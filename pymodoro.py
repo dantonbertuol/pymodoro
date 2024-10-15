@@ -702,7 +702,7 @@ class PomodoroTimer(QMainWindow):
             self.menu_bar.addAction(self.reset_menu_action)
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             self.show()
-            self.setFixedSize(210, 75)
+            self.setFixedSize(250, 85)
             self.timer_label.setStyleSheet("font-size: 18px;")
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
