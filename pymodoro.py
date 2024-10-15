@@ -698,11 +698,11 @@ class PomodoroTimer(QMainWindow):
             self.menu_bar.addAction(self.start_menu_action)
             self.menu_bar.addAction(self.next_menu_action)
             self.menu_bar.addAction(self.reset_menu_action)
-            self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
-            self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             self.show()
             self.setFixedSize(300, 85)
+            self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
+            self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
             self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
