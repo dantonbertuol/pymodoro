@@ -464,9 +464,9 @@ class PomodoroTimer(QMainWindow):
         # Ajusta o tamanho da fonte com base nas dimensões da janela
         cycle_font_size = max(12, width // 20)
         timer_font_size = max(24, width // 10)
-
-        self.cycle_label.setStyleSheet(f"font-size: {cycle_font_size}px;")
-        self.timer_label.setStyleSheet(f"font-size: {timer_font_size}px;")
+        if not self.minimalist:
+            self.cycle_label.setStyleSheet(f"font-size: {cycle_font_size}px;")
+            self.timer_label.setStyleSheet(f"font-size: {timer_font_size}px;")
 
     def toggle_timer(self):
         if not self.running:
@@ -702,9 +702,8 @@ class PomodoroTimer(QMainWindow):
             self.menu_bar.addAction(self.reset_menu_action)
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             self.show()
-            self.setFixedSize(210, 80)
-            self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
-            self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
+            self.setFixedSize(210, 75)
+            self.timer_label.setStyleSheet("font-size: 18px;")
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
             self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
@@ -727,6 +726,7 @@ class PomodoroTimer(QMainWindow):
             self.menu_bar.addAction(self.minimize_on_tray_action)
             self.menu_bar.addAction(self.darkmode_action)
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
+            self.update_font_sizes()
             self.show()
 
     def save_config(
