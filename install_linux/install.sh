@@ -24,12 +24,12 @@ mkdir -p $PATH_DESKTOP
 mkdir -p $PATH_ICON
 cp ../utils/pymodoro_darkmode.qss $PATH_UTILS
 cp ../utils/pymodoro_lightmode.qss $PATH_UTILS
-cp ../utils/pymodoro_icon.ico $PATH_UTILS
-cp ../utils/pymodoro_tray_icon.ico $PATH_UTILS
+cp ../utils/pymodoro_icon.png $PATH_UTILS
+cp ../utils/pymodoro_tray_icon.png $PATH_UTILS
 cp ../utils/notification.wav $PATH_UTILS
 cp bin/pymodoro $PATH_BIN
 cp pymodoro.desktop $PATH_DESKTOP
-cp ../utils/pymodoro_icon.ico $PATH_ICON
+cp ../utils/pymodoro_icon.png $PATH_ICON
 
 if [ ! -f $PATH_UTILS/pymodoro_settings.json ] || [ "$FORCE_REPLACE" = true ]; then
     cp ../utils/pymodoro_settings.json $PATH_UTILS

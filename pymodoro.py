@@ -321,6 +321,19 @@ class PomodoroTimer(QMainWindow):
         self.menu_bar.addAction(minimize_on_tray)
         self.menu_bar.addAction(self.darkmode_action)
 
+        self.next_menu_action = QAction("⏭️", self)
+        self.next_menu_action.triggered.connect(self.next_cycle)
+        self.next_menu_action.setToolTip("Next Cycle")
+        self.next_menu_action.hovered.connect(self.show_tooltip)
+        self.start_menu_action = QAction("⏯️", self)
+        self.start_menu_action.triggered.connect(self.toggle_timer)
+        self.start_menu_action.setToolTip("Start/Pause")
+        self.start_menu_action.hovered.connect(self.show_tooltip)
+        self.reset_menu_action = QAction("↩️", self)
+        self.reset_menu_action.triggered.connect(self.reset_timer)
+        self.reset_menu_action.setToolTip("Reset")
+        self.reset_menu_action.hovered.connect(self.show_tooltip)
+
         self.minimalist = False
         self.old_size = self.size()
 
@@ -481,7 +494,13 @@ class PomodoroTimer(QMainWindow):
 
     def set_timer_label(self):
         minutes, seconds = divmod(self.total_seconds, 60)
-        self.timer_label.setText(f"{minutes:02}:{seconds:02}")
+        text = f"{minutes:02}:{seconds:02}"
+        if self.minimalist:
+            if self.is_work_cycle:
+                text = f"Work: {text}"
+            else:
+                text = f"Break: {text}"
+        self.timer_label.setText(text)
         if not self.is_work_cycle:
             self.timer_label_break.setText(f"{minutes:02}:{seconds:02}")
 
@@ -669,16 +688,37 @@ class PomodoroTimer(QMainWindow):
     def show_minimalist_mode(self):
         if not self.minimalist:
             self.old_size = self.size()
-            self.setFixedSize(210, 170)
             self.minimalist = True
             self.minimalist_action.setText("⏫")
+            self.cycle_label.hide()
+            self.task_to_work_input.hide()
+            self.reset_button.hide()
+            self.next_cycle_button.hide()
+            self.start_button.hide()
+            self.menu_bar.addAction(self.start_menu_action)
+            self.menu_bar.addAction(self.next_menu_action)
+            self.menu_bar.addAction(self.reset_menu_action)
+            self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
+            self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             self.show()
+            self.setFixedSize(300, 85)
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo
             self.setMaximumSize(QSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX))  # Remove restrições de tamanho máximo
             self.resize(self.old_size)
             self.minimalist = False
             self.minimalist_action.setText("⏬")
+            self.cycle_label.show()
+            if self.task_to_work:
+                self.task_to_work_input.show()
+            self.reset_button.show()
+            self.next_cycle_button.show()
+            self.start_button.show()
+            self.menu_bar.removeAction(self.next_menu_action)
+            self.menu_bar.removeAction(self.start_menu_action)
+            self.menu_bar.removeAction(self.reset_menu_action)
+            self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
             self.show()
 
     def save_config(
