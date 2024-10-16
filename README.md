@@ -17,8 +17,9 @@
 - [x] Improve Darkmode
 - [x] Add Lightmode
 - [x] Create a settings database
+- [x] Set a task to work on
+- [ ] Choose the display to show the break widget
 - [ ] Dismember files
-- [ ] Set a task to work on
 - [ ] Improve readme
 - [ ] Generate a report of the time worked
 - [ ] Detect idle time
