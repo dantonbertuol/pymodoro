@@ -3,6 +3,7 @@ import os
 import platform
 import random
 import json
+import sqlite3
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -24,6 +25,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtMultimedia import QSoundEffect
+from PyQt6.QtWidgets import QFileDialog
 
 # Se estivermos no ambiente de desenvolvimento do VSCode
 if "vscode" in os.environ.get("TERM_PROGRAM", ""):
@@ -33,6 +35,7 @@ if "vscode" in os.environ.get("TERM_PROGRAM", ""):
     LIGHTMODE_PATH = "utils/pymodoro_lightmode.qss"
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
     SETTINGS_PATH = "utils/pymodoro_settings.json"
+    DATABASE_PATH = "utils/pymodoro.db"
 else:
     if platform.system() == "Linux":
         from pwd import getpwnam  # type: ignore
@@ -45,6 +48,7 @@ else:
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
         SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
+        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
     elif platform.system() == "Windows":
         UTILS_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils"
         ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
@@ -53,6 +57,7 @@ else:
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
         SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
+        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
     else:
         raise NotImplementedError("Sistema operacional não suportado")
 
@@ -224,6 +229,9 @@ class PomodoroTimer(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        self.connect_database()
+        self.create_db_structure()
+
         self.setWindowTitle("Pymodoro")
 
         self.setWindowIcon(QIcon(ICON_PATH))  # Define o ícone da janela
@@ -284,6 +292,9 @@ class PomodoroTimer(QMainWindow):
         self.running = False
         self.cycle = 1
         self.is_work_cycle = True
+        self.is_postpone = False
+        self.postpone_duration = 300
+        self.load_last_pomodoro()
 
         # Sistema de bandeja
         self.tray_icon = QSystemTrayIcon(self)
@@ -352,6 +363,47 @@ class PomodoroTimer(QMainWindow):
     def close_app(self):
         self.show()
         self.close()
+
+    def connect_database(self):
+        self.conn = sqlite3.connect(DATABASE_PATH)
+        self.cursor = self.conn.cursor()
+
+    def create_db_structure(self):
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS pomodoros (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task TEXT,
+                duration_seconds INTEGER NOT NULL,
+                created_date DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            """
+        )
+
+    def insert_db(self, task, duration_seconds):
+        self.cursor.execute(
+            """
+            INSERT INTO pomodoros (task, duration_seconds)
+            VALUES (?, ?);
+            """,
+            (task, duration_seconds),
+        )
+        self.conn.commit()
+
+    def load_last_pomodoro(self):
+        self.cursor.execute("SELECT task FROM pomodoros ORDER BY id DESC LIMIT 1")
+        last_pomodoro = self.cursor.fetchone()
+        if last_pomodoro:
+            self.task_to_work_input.setText(last_pomodoro[0])
+
+    def insert_duration_db(self):
+        duration = (
+            self.work_duration - self.total_seconds
+            if not self.is_postpone
+            else self.postpone_duration - self.total_seconds
+        )
+        if duration > 0:
+            self.insert_db(self.task_to_work_input.text(), duration)
 
     def show_tooltip(self):
         act = self.sender()
@@ -570,6 +622,7 @@ class PomodoroTimer(QMainWindow):
 
     def next_cycle(self):
         if self.is_work_cycle:
+            self.insert_duration_db()
             self.break_cycle()
         else:
             self.work_cycle()
@@ -584,6 +637,9 @@ class PomodoroTimer(QMainWindow):
             self.start_timer()
         else:
             self.isnt_autostart()
+
+        if self.is_postpone:
+            self.is_postpone = False
 
     def verify_auto_start(self):
         if self.is_work_cycle and self.autostart_work and not self.end_of_cycle:
@@ -658,13 +714,16 @@ class PomodoroTimer(QMainWindow):
 
     def postpone_break(self):
         # Adia o descanso, adicionando 5 minutos de trabalho ao timer
-        self.total_seconds = 300  # Adiciona 5 minutos (300 segundos)
+        self.total_seconds = self.postpone_duration
+        self.is_postpone = True
         self.cycle_label.setText(f"Cycle: {self.cycle} - Work")
         self.is_work_cycle = True  # Define que agora é um ciclo de trabalho
         if self.running:
             self.timer.start(1000)
 
     def reset_timer(self):
+        if self.is_work_cycle:
+            self.insert_duration_db()
         self.timer.stop()
         self.running = False
         self.cycle = 1
@@ -684,6 +743,22 @@ class PomodoroTimer(QMainWindow):
         if not self.on_tray:
             self.config_widget.move(self.pos())
         self.config_widget.show()
+
+    def export_csv(self):
+        options = QFileDialog.Options()
+        options |= QFileDialog.Option.DontUseNativeDialog
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)", options=options
+        )
+        if file_path:
+            self.save_csv(file_path)
+
+        self.cursor.execute("SELECT * FROM pomodoros")
+        rows = self.cursor.fetchall()
+        with open(file_path, "w", newline="") as file:
+            file.write("Task,Duration (seconds)\n")
+            for row in rows:
+                file.write(f"{row[0]},{row[1]}\n")
 
     def show_minimalist_mode(self):
         if not self.minimalist:
@@ -780,6 +855,9 @@ class PomodoroTimer(QMainWindow):
             self.dark_mode_config,
             self.task_to_work,
         )
+
+        if self.work_cycle:
+            self.insert_duration_db()
 
 
 if __name__ == "__main__":
