@@ -19,7 +19,8 @@ from PyQt6.QtWidgets import (
     QMainWindow,
     QMenu,
     QToolTip,
-    QLineEdit,
+    QComboBox,
+    QCompleter,
     QWIDGETSIZE_MAX,
 )
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
@@ -30,7 +31,8 @@ from PyQt6.QtWidgets import QFileDialog
 # Se estivermos no ambiente de desenvolvimento do VSCode
 if "vscode" in os.environ.get("TERM_PROGRAM", ""):
     ICON_PATH = "utils/pymodoro_icon.ico"
-    TRAY_ICON_PATH = "utils/pymodoro_tray_icon.ico"
+    ICON_PATH_RUNNING = "utils/pymodoro_icon_running.ico"
+    ICON_PATH_PAUSE = "utils/pymodoro_icon_pause.ico"
     DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
     LIGHTMODE_PATH = "utils/pymodoro_lightmode.qss"
     NOTIFICATION_SOUND_PATH = "utils/notification.wav"
@@ -43,7 +45,8 @@ else:
         HOME_PATH = getpwnam(os.getlogin()).pw_dir
         UTILS_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils"
         ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
-        TRAY_ICON_PATH = f"{UTILS_PATH}/pymodoro_tray_icon.ico"
+        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
+        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
         DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
@@ -52,7 +55,8 @@ else:
     elif platform.system() == "Windows":
         UTILS_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils"
         ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
-        TRAY_ICON_PATH = f"{UTILS_PATH}/pymodoro_tray_icon.ico"
+        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
+        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
         DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
         LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
@@ -272,13 +276,26 @@ class PomodoroTimer(QMainWindow):
         button_layout.addWidget(self.next_cycle_button)
         button_layout.addWidget(self.reset_button)
 
-        self.task_to_work_input = QLineEdit()
-        self.task_to_work_input.setPlaceholderText("Task to work")
+        self.task_to_work_container = QWidget(self)
+        self.task_to_work_label = QLabel("Task to work", self)
+        self.task_to_work_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.task_to_work_input = QComboBox(self)
+        self.task_to_work_input.setEditable(True)
+        self.qCompleter = QCompleter(self.get_pomodoros(), self)
+        self.qCompleter.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+        self.qCompleter.setFilterMode(Qt.MatchFlag.MatchContains)
+        self.qCompleter.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
+        self.task_to_work_input.setCompleter(self.qCompleter)
+
+        task_to_work_layout = QVBoxLayout()
+        task_to_work_layout.addWidget(self.task_to_work_label)
+        task_to_work_layout.addWidget(self.task_to_work_input)
+        self.task_to_work_container.setLayout(task_to_work_layout)
 
         layout = QVBoxLayout()
         layout.addWidget(self.cycle_label)
         layout.addWidget(self.timer_container)
-        layout.addWidget(self.task_to_work_input)
+        layout.addWidget(self.task_to_work_container)
         layout.addLayout(button_layout)
 
         central_widget = QWidget()
@@ -294,7 +311,7 @@ class PomodoroTimer(QMainWindow):
         self.is_work_cycle = True
         self.is_postpone = False
         self.postpone_duration = 300
-        self.load_last_pomodoro()
+        self.load_cb_pomodoros()
 
         # Sistema de bandeja
         self.tray_icon = QSystemTrayIcon(self)
@@ -390,11 +407,21 @@ class PomodoroTimer(QMainWindow):
         )
         self.conn.commit()
 
-    def load_last_pomodoro(self):
-        self.cursor.execute("SELECT task FROM pomodoros ORDER BY id DESC LIMIT 1")
-        last_pomodoro = self.cursor.fetchone()
-        if last_pomodoro:
-            self.task_to_work_input.setText(last_pomodoro[0])
+    def get_pomodoros(self):
+        self.cursor.execute(
+            "SELECT DISTINCT task FROM pomodoros where task is not null and task != '' ORDER BY id DESC"
+        )
+        return [pomodoro[0] for pomodoro in self.cursor.fetchall()]
+
+    def load_cb_pomodoros(self, load_last_pomodor: bool = True):
+        self.task_to_work_input.clear()
+        self.task_to_work_input.addItem("")
+        self.task_to_work_input.addItems(self.get_pomodoros())
+        if load_last_pomodor:
+            try:
+                self.task_to_work_input.setCurrentIndex(1)
+            except IndexError:
+                pass
 
     def insert_duration_db(self):
         duration = (
@@ -403,7 +430,8 @@ class PomodoroTimer(QMainWindow):
             else self.postpone_duration - self.total_seconds
         )
         if duration > 0:
-            self.insert_db(self.task_to_work_input.text(), duration)
+            self.insert_db(self.task_to_work_input.currentText().strip(), duration)
+            self.task_to_work_input.addItem(self.task_to_work_input.currentText().strip())
 
     def show_tooltip(self):
         act = self.sender()
@@ -531,18 +559,24 @@ class PomodoroTimer(QMainWindow):
         self.timer.start(1000)
         self.start_button.setText("Pause")
         self.start_action.setText("Pause")
+        self.setWindowIcon(QIcon(ICON_PATH_RUNNING))
+        self.tray_icon.setIcon(QIcon(ICON_PATH_RUNNING))
 
     def pause_timer(self):
         self.running = False
         self.timer.stop()
         self.start_button.setText("Resume")
         self.start_action.setText("Resume")
+        self.setWindowIcon(QIcon(ICON_PATH_PAUSE))
+        self.tray_icon.setIcon(QIcon(ICON_PATH_PAUSE))
 
     def isnt_autostart(self):
         self.running = False
         self.timer.stop()
         self.start_button.setText("Start")
         self.start_action.setText("Start")
+        self.setWindowIcon(QIcon(ICON_PATH))
+        self.tray_icon.setIcon(QIcon(ICON_PATH))
 
     def set_timer_label(self):
         minutes, seconds = divmod(self.total_seconds, 60)
@@ -569,7 +603,7 @@ class PomodoroTimer(QMainWindow):
 
     def update_tray_tooltip(self):
         minutes, seconds = divmod(self.total_seconds, 60)
-        task = self.task_to_work_input.text() if self.task_to_work else ""
+        task = self.task_to_work_input.currentText() if self.task_to_work else ""
         text_to_show = ""
         if self.is_work_cycle:
             text_to_show = f"Cycle {self.cycle} - Work: {minutes:02}:{seconds:02}"
@@ -610,6 +644,8 @@ class PomodoroTimer(QMainWindow):
             self.cycle = 1
             self.start_button.setText("Start")
             self.start_action.setText("Start")
+            self.setWindowIcon(QIcon(ICON_PATH))
+            self.tray_icon.setIcon(QIcon(ICON_PATH))
             self.end_of_cycle = False
             self.running = False
             self.show_notification("End of Cycle")
@@ -683,9 +719,13 @@ class PomodoroTimer(QMainWindow):
         if self.running:
             self.start_button.setText("Pause")
             self.start_action.setText("Pause")
+            self.setWindowIcon(QIcon(ICON_PATH_RUNNING))
+            self.tray_icon.setIcon(QIcon(ICON_PATH_RUNNING))
         else:
             self.start_button.setText("Resume")
             self.start_action.setText("Resume")
+            self.setWindowIcon(QIcon(ICON_PATH_PAUSE))
+            self.tray_icon.setIcon(QIcon(ICON_PATH_PAUSE))
 
     def show_notification(self, message):
         self.tray_icon.showMessage("Pomodoro Timer", message, QIcon(ICON_PATH), 3000)
@@ -734,6 +774,8 @@ class PomodoroTimer(QMainWindow):
         self.cycle_label.setText("Cycle: 1 - Work")
         self.start_button.setText("Start")
         self.start_action.setText("Start")
+        self.setWindowIcon(QIcon(ICON_PATH))
+        self.tray_icon.setIcon(QIcon(ICON_PATH))
 
     def on_tray_option(self):
         self.hide()

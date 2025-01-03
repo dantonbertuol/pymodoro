@@ -25,6 +25,8 @@ mkdir -p $PATH_ICON
 cp ../utils/pymodoro_darkmode.qss $PATH_UTILS
 cp ../utils/pymodoro_lightmode.qss $PATH_UTILS
 cp ../utils/pymodoro_icon.png $PATH_UTILS
+cp ../utils/pymodoro_icon_pause.ico $PATH_UTILS
+cp ../utils/pymodoro_icon_running.ico $PATH_UTILS
 cp ../utils/pymodoro_tray_icon.png $PATH_UTILS
 cp ../utils/notification.wav $PATH_UTILS
 cp bin/pymodoro $PATH_BIN
