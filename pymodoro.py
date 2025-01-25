@@ -464,9 +464,9 @@ class PomodoroTimer(QMainWindow):
         self.resize(self.window_size[0], self.window_size[1])
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, self.always_on_top)
         if self.task_to_work:
-            self.task_to_work_input.show()
+            self.task_to_work_container.show()
         else:
-            self.task_to_work_input.hide()
+            self.task_to_work_container.hide()
 
     def toggle_dark_mode(self):
         self.dark_mode_config = not self.dark_mode_config
@@ -808,7 +808,7 @@ class PomodoroTimer(QMainWindow):
             self.minimalist = True
             self.minimalist_action.setText("⏫")
             self.cycle_label.hide()
-            self.task_to_work_input.hide()
+            self.task_to_work_container.hide()
             self.reset_button.hide()
             self.next_cycle_button.hide()
             self.start_button.hide()
@@ -831,7 +831,7 @@ class PomodoroTimer(QMainWindow):
             self.minimalist_action.setText("⏬")
             self.cycle_label.show()
             if self.task_to_work:
-                self.task_to_work_input.show()
+                self.task_to_work_container.show()
             self.reset_button.show()
             self.next_cycle_button.show()
             self.start_button.show()
