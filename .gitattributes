@@ -1,0 +1,2 @@
+pymodoro filter=lfs diff=lfs merge=lfs -text
+pymodoro.exe filter=lfs diff=lfs merge=lfs -text

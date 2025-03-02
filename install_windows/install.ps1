@@ -16,6 +16,8 @@ New-Item -ItemType Directory -Force -Path $PATH_ICON
 Copy-Item -Path "../utils/pymodoro_darkmode.qss" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/pymodoro_lightmode.qss" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/pymodoro_icon.ico" -Destination $PATH_UTILS
+Copy-Item -Path "../utils/pymodoro_icon_pause.ico" -Destination $PATH_UTILS
+Copy-Item -Path "../utils/pymodoro_icon_running.ico" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/pymodoro_tray_icon.ico" -Destination $PATH_UTILS
 Copy-Item -Path "../utils/notification.wav" -Destination $PATH_UTILS
 Copy-Item -Path "bin/pymodoro.exe" -Destination $PATH_BIN
