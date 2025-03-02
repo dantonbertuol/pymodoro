@@ -62,6 +62,17 @@ else:
         NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
         SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
         DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
+    elif platform.system() == "Darwin":
+        HOME_PATH = os.getenv("HOME")
+        UTILS_PATH = f"{HOME_PATH}/.config/pymodoro"
+        ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
+        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
+        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
+        DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
+        LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
+        NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
+        SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
+        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
     else:
         raise NotImplementedError("Sistema operacional não suportado")
 
@@ -392,18 +403,19 @@ class PomodoroTimer(QMainWindow):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 task TEXT,
                 duration_seconds INTEGER NOT NULL,
-                created_date DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+                type TEXT
             );
             """
         )
 
-    def insert_db(self, task, duration_seconds):
+    def insert_db(self, task, duration_seconds, type):
         self.cursor.execute(
             """
-            INSERT INTO pomodoros (task, duration_seconds)
-            VALUES (?, ?);
+            INSERT INTO pomodoros (task, duration_seconds, type)
+            VALUES (?, ?, ?);
             """,
-            (task, duration_seconds),
+            (task, duration_seconds, type),
         )
         self.conn.commit()
 
@@ -424,13 +436,21 @@ class PomodoroTimer(QMainWindow):
                 pass
 
     def insert_duration_db(self):
-        duration = (
-            self.work_duration - self.total_seconds
-            if not self.is_postpone
-            else self.postpone_duration - self.total_seconds
-        )
+        if self.is_work_cycle:
+            duration = (
+                self.work_duration - self.total_seconds
+                if not self.is_postpone
+                else self.postpone_duration - self.total_seconds
+            )
+        else:
+            duration = (
+                self.short_break - self.total_seconds
+                if self.cycle % self.cycle_count != 0
+                else self.long_break - self.total_seconds
+            )
         if duration > 0:
-            self.insert_db(self.task_to_work_input.currentText().strip(), duration)
+            type: str = "work" if self.is_work_cycle else "break"
+            self.insert_db(self.task_to_work_input.currentText().strip(), duration, type)
             self.task_to_work_input.addItem(self.task_to_work_input.currentText().strip())
 
     def show_tooltip(self):
@@ -657,8 +677,8 @@ class PomodoroTimer(QMainWindow):
         self.is_work_cycle = True
 
     def next_cycle(self):
+        self.insert_duration_db()
         if self.is_work_cycle:
-            self.insert_duration_db()
             self.break_cycle()
         else:
             self.work_cycle()
@@ -705,8 +725,10 @@ class PomodoroTimer(QMainWindow):
     def on_tray_icon_click(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.setVisible(True)
-            self.activateWindow()
             self.update_widget_infos()
+            self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized | Qt.WindowState.WindowActive)
+            self.raise_()
+            self.activateWindow()
             self.on_tray = False
 
     def update_widget_infos(self):
@@ -762,8 +784,7 @@ class PomodoroTimer(QMainWindow):
             self.timer.start(1000)
 
     def reset_timer(self):
-        if self.is_work_cycle:
-            self.insert_duration_db()
+        self.insert_duration_db()
         self.timer.stop()
         self.running = False
         self.cycle = 1
@@ -898,8 +919,7 @@ class PomodoroTimer(QMainWindow):
             self.task_to_work,
         )
 
-        if self.work_cycle:
-            self.insert_duration_db()
+        self.insert_duration_db()
 
 
 if __name__ == "__main__":
