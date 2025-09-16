@@ -1,9 +1,11 @@
+# TODO: Ao final de um break, mudar os botões para um de continuar e só continuar o work caso clique
+# TODO: Quando volto do minimalist mode, não some o label "Work: "
 import sys
-import os
-import platform
 import random
 import json
-import sqlite3
+
+from datetime import datetime
+from collections import OrderedDict
 from PyQt6.QtWidgets import (
     QApplication,
     QWidget,
@@ -26,55 +28,22 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtMultimedia import QSoundEffect
-from PyQt6.QtWidgets import QFileDialog
+# from PyQt6.QtWidgets import QFileDialog
 
-# Se estivermos no ambiente de desenvolvimento do VSCode
-if "vscode" in os.environ.get("TERM_PROGRAM", ""):
-    ICON_PATH = "utils/pymodoro_icon.ico"
-    ICON_PATH_RUNNING = "utils/pymodoro_icon_running.ico"
-    ICON_PATH_PAUSE = "utils/pymodoro_icon_pause.ico"
-    DARKMODE_PATH = "utils/pymodoro_darkmode.qss"
-    LIGHTMODE_PATH = "utils/pymodoro_lightmode.qss"
-    NOTIFICATION_SOUND_PATH = "utils/notification.wav"
-    SETTINGS_PATH = "utils/pymodoro_settings.json"
-    DATABASE_PATH = "utils/pymodoro.db"
-else:
-    if platform.system() == "Linux":
-        from pwd import getpwnam  # type: ignore
+from conf import (
+    ICON_PATH,
+    ICON_PATH_RUNNING,
+    ICON_PATH_PAUSE,
+    DARKMODE_PATH,
+    LIGHTMODE_PATH,
+    NOTIFICATION_SOUND_PATH,
+    SETTINGS_PATH,
+    IS_DEV,
+)
+from database.database import Database
 
-        HOME_PATH = getpwnam(os.getlogin()).pw_dir
-        UTILS_PATH = f"{HOME_PATH}/.local/bin/pymodoro_utils"
-        ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
-        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
-        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
-        DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
-        LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
-        NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
-        SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
-        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
-    elif platform.system() == "Windows":
-        UTILS_PATH = f"C:/Users/{os.getenv('USERNAME')}/AppData/Local/Pymodoro/pymodoro_utils"
-        ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
-        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
-        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
-        DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
-        LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
-        NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
-        SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
-        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
-    elif platform.system() == "Darwin":
-        HOME_PATH = os.getenv("HOME")
-        UTILS_PATH = f"{HOME_PATH}/.config/pymodoro"
-        ICON_PATH = f"{UTILS_PATH}/pymodoro_icon.ico"
-        ICON_PATH_RUNNING = f"{UTILS_PATH}/pymodoro_icon_running.ico"
-        ICON_PATH_PAUSE = f"{UTILS_PATH}/pymodoro_icon_pause.ico"
-        DARKMODE_PATH = f"{UTILS_PATH}/pymodoro_darkmode.qss"
-        LIGHTMODE_PATH = f"{UTILS_PATH}/pymodoro_lightmode.qss"
-        NOTIFICATION_SOUND_PATH = f"{UTILS_PATH}/notification.wav"
-        SETTINGS_PATH = f"{UTILS_PATH}/pymodoro_settings.json"
-        DATABASE_PATH = f"{UTILS_PATH}/pymodoro.db"
-    else:
-        raise NotImplementedError("Sistema operacional não suportado")
+DATABASE: str = "mongodb"
+# DATABASE: str = "sqlite"
 
 
 class BreakWidget(QWidget):
@@ -393,42 +362,29 @@ class PomodoroTimer(QMainWindow):
         self.close()
 
     def connect_database(self):
-        self.conn = sqlite3.connect(DATABASE_PATH)
-        self.cursor = self.conn.cursor()
+        if IS_DEV:
+            print("Connecting to SQLite")
+            self.database = Database("sqlite")
+        else:
+            print(f"Connecting to {DATABASE}")
+            self.database = Database(DATABASE)
+
+        self.database.connect()
 
     def create_db_structure(self):
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS pomodoros (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                task TEXT,
-                duration_seconds INTEGER NOT NULL,
-                created_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-                type TEXT
-            );
-            """
-        )
+        self.database.create_structure()
 
     def insert_db(self, task, duration_seconds, type):
-        self.cursor.execute(
-            """
-            INSERT INTO pomodoros (task, duration_seconds, type)
-            VALUES (?, ?, ?);
-            """,
-            (task, duration_seconds, type),
-        )
-        self.conn.commit()
+        insert_dict = {"task": task, "duration_seconds": duration_seconds, "type": type, "created_date": datetime.now()}
+        self.database.insert_data(insert_dict)
 
     def get_pomodoros(self):
-        self.cursor.execute(
-            "SELECT DISTINCT task FROM pomodoros where task is not null and task != '' ORDER BY id DESC"
-        )
-        return [pomodoro[0] for pomodoro in self.cursor.fetchall()]
+        return self.database.get_pomodors()
 
     def load_cb_pomodoros(self, load_last_pomodor: bool = True):
         self.task_to_work_input.clear()
         self.task_to_work_input.addItem("")
-        self.task_to_work_input.addItems(self.get_pomodoros())
+        self.task_to_work_input.addItems(list(OrderedDict.fromkeys(self.get_pomodoros())))
         if load_last_pomodor:
             try:
                 self.task_to_work_input.setCurrentIndex(1)
@@ -807,21 +763,22 @@ class PomodoroTimer(QMainWindow):
             self.config_widget.move(self.pos())
         self.config_widget.show()
 
-    def export_csv(self):
-        options = QFileDialog.Options()
-        options |= QFileDialog.Option.DontUseNativeDialog
-        file_path, _ = QFileDialog.getSaveFileName(
-            self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)", options=options
-        )
-        if file_path:
-            self.save_csv(file_path)
+    # TODO: export csv
+    # def export_csv(self):
+    #     options = QFileDialog.Options()
+    #     options |= QFileDialog.Option.DontUseNativeDialog
+    #     file_path, _ = QFileDialog.getSaveFileName(
+    #         self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)", options=options
+    #     )
+    #     if file_path:
+    #         self.save_csv(file_path)
 
-        self.cursor.execute("SELECT * FROM pomodoros")
-        rows = self.cursor.fetchall()
-        with open(file_path, "w", newline="") as file:
-            file.write("Task,Duration (seconds)\n")
-            for row in rows:
-                file.write(f"{row[0]},{row[1]}\n")
+    #     # rows = self.database.find("SELECT * FROM pomodoros")
+    #     rows = self.database.find({"collection": "pomodoros", "filter": {}, "sort": {"_id": 1}})
+    #     with open(file_path, "w", newline="") as file:
+    #         file.write("Task,Duration (seconds)\n")
+    #         for row in rows:
+    #             file.write(f"{row[0]},{row[1]}\n")
 
     def show_minimalist_mode(self):
         if not self.minimalist:
@@ -920,6 +877,7 @@ class PomodoroTimer(QMainWindow):
         )
 
         self.insert_duration_db()
+        self.database.disconnect()
 
 
 if __name__ == "__main__":

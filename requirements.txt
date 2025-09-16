@@ -1,6 +1,4 @@
 pyqt6==6.7.1
-flake8==6.0.0
-mypy==1.2.0
-autopep8==2.0.2
-pylint==2.17.2
-pyinstaller==5.13.0
+pymongo==4.11.1
+python-dotenv==1.0.1
+pyinstaller==6.16.0
