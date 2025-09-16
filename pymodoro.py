@@ -1,4 +1,5 @@
 # TODO: Ao final de um break, mudar os botões para um de continuar e só continuar o work caso clique
+# TODO: Quando volto do minimalist mode, não some o label "Work: "
 import sys
 import random
 import json
@@ -27,7 +28,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
 from PyQt6.QtGui import QIcon, QAction, QCursor
 from PyQt6.QtMultimedia import QSoundEffect
-from PyQt6.QtWidgets import QFileDialog
+# from PyQt6.QtWidgets import QFileDialog
 
 from conf import (
     ICON_PATH,
@@ -42,6 +43,7 @@ from conf import (
 from database.database import Database
 
 DATABASE: str = "mongodb"
+# DATABASE: str = "sqlite"
 
 
 class BreakWidget(QWidget):
