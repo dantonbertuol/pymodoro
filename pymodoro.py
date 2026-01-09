@@ -1,49 +1,50 @@
 # TODO: Ao final de um break, mudar os botões para um de continuar e só continuar o work caso clique
 # TODO: Quando volto do minimalist mode, não some o label "Work: "
-import sys
-import random
+# TODO: colocar o always on top como uma config rápida, igual o dark mode
 import json
-
-from datetime import datetime
+import random
+import sys
 from collections import OrderedDict
+from datetime import datetime
+
+from PyQt6.QtCore import QFile, QIODevice, QSize, Qt, QTextStream, QTimer, QUrl
+from PyQt6.QtGui import QAction, QCursor, QIcon
+from PyQt6.QtMultimedia import QSoundEffect
 from PyQt6.QtWidgets import (
+    QWIDGETSIZE_MAX,
     QApplication,
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
-    QHBoxLayout,
-    QSpinBox,
-    QFormLayout,
-    QSystemTrayIcon,
     QCheckBox,
-    QMenuBar,
-    QMainWindow,
-    QMenu,
-    QToolTip,
     QComboBox,
     QCompleter,
-    QWIDGETSIZE_MAX,
+    QFormLayout,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QMenuBar,
+    QPushButton,
+    QSpinBox,
+    QSystemTrayIcon,
+    QToolTip,
+    QVBoxLayout,
+    QWidget,
 )
-from PyQt6.QtCore import QTimer, Qt, QSize, QUrl, QFile, QTextStream, QIODevice
-from PyQt6.QtGui import QIcon, QAction, QCursor
-from PyQt6.QtMultimedia import QSoundEffect
-# from PyQt6.QtWidgets import QFileDialog
 
+# from PyQt6.QtWidgets import QFileDialog
 from conf import (
-    ICON_PATH,
-    ICON_PATH_RUNNING,
-    ICON_PATH_PAUSE,
     DARKMODE_PATH,
+    ICON_PATH,
+    ICON_PATH_PAUSE,
+    ICON_PATH_RUNNING,
+    IS_DEV,
     LIGHTMODE_PATH,
     NOTIFICATION_SOUND_PATH,
     SETTINGS_PATH,
-    IS_DEV,
 )
 from database.database import Database
 
-DATABASE: str = "mongodb"
-# DATABASE: str = "sqlite"
+# DATABASE: str = "mongodb"
+DATABASE: str = "sqlite"
 
 
 class BreakWidget(QWidget):
@@ -222,7 +223,9 @@ class PomodoroTimer(QMainWindow):
 
         self.timer_label = QLabel("", self)
         self.timer_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
+        self.timer_label.mousePressEvent = self.on_timer_label_clicked
+        self.timer_label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.timer_label.setToolTip("Click to Start/Pause")
         self.timer_label_break = QLabel("", self)
         self.timer_label_break.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.timer_label_break.setStyleSheet("font-size: 48px;")
@@ -515,14 +518,24 @@ class PomodoroTimer(QMainWindow):
         self.update_font_sizes()
 
     def update_font_sizes(self):
-        width = self.width()
+        width = min(self.width(), self.height())
+        # width = self.width()
 
         # Ajusta o tamanho da fonte com base nas dimensões da janela
         cycle_font_size = max(12, width // 20)
         timer_font_size = max(24, width // 10)
         if not self.minimalist:
+            tooltip_font_size = max(10, timer_font_size * 0.2)
             self.cycle_label.setStyleSheet(f"font-size: {cycle_font_size}px;")
-            self.timer_label.setStyleSheet(f"font-size: {timer_font_size}px;")
+            self.timer_label.setStyleSheet("""
+                                            QLabel {
+                                                font-size: """ + f"{timer_font_size}px;" + """
+                                            }
+
+                                            QToolTip {
+                                                font-size: """ + f"{tooltip_font_size}px;" + """
+                                            }
+                                            """)
 
     def toggle_timer(self):
         if not self.running:
@@ -739,6 +752,10 @@ class PomodoroTimer(QMainWindow):
         if self.running:
             self.timer.start(1000)
 
+    def on_timer_label_clicked(self, event):
+        # Ação ao clicar no timer_label
+        self.toggle_timer()
+
     def reset_timer(self):
         self.insert_duration_db()
         self.timer.stop()
@@ -799,7 +816,17 @@ class PomodoroTimer(QMainWindow):
             self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
             self.show()
             self.setFixedSize(200, 85)
-            self.timer_label.setStyleSheet("font-size: 18px;")
+            self.timer_label.setStyleSheet("""
+                                            QLabel {
+                                                font-size: 18px;
+                                            }
+
+                                            QToolTip {
+                                                font-size: 12px;
+                                                padding: 4px 6px;
+                                                border-radius: 4px;
+                                            }
+                                            """)
             self.set_timer_label()
         else:
             self.setMinimumSize(QSize(0, 0))  # Remove restrições de tamanho mínimo

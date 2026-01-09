@@ -1,6 +1,6 @@
+from conf import DB_NAME, MONGODB_HOST, MONGODB_PASSWORD, MONGODB_USER, SQLITE_DATABASE_PATH
 from database.mongobd import MongoDatabase
 from database.sqlitebd import SQLiteDatabase
-from conf import SQLITE_DATABASE_PATH, MONGODB_HOST, MONGODB_USER, MONGODB_PASSWORD, DB_NAME
 
 
 class Database:
